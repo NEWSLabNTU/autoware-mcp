@@ -6,11 +6,11 @@
 
 ## Overview
 
-The Autoware MCP Integration project provides a bridge between AI systems and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making for autonomous vehicles.
+The Autoware MCP Server provides a universal bridge between ANY AI agent (Claude, GPT, Gemini, or custom agents) and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making for autonomous vehicles.
 
 ### Key Features
 
-- 🤖 **AI-Driven Planning**: Leverage AI capabilities for complex mission planning and decision-making
+- 🤖 **Universal AI Support**: Works with any MCP-compatible AI agent (Claude, GPT, Gemini, etc.)
 - 🚗 **Full Vehicle Control**: Complete control over Autoware's autonomous driving features
 - 📊 **Real-Time Monitoring**: Concurrent monitoring of perception, planning, and vehicle state
 - 🛡️ **Multi-Layer Safety**: Comprehensive safety validation at every level
@@ -59,7 +59,16 @@ cd autoware-mcp
 python -m autoware_mcp.server --config config/default.yaml
 ```
 
-3. **Connect AI Client**:
+3. **Connect Your AI Agent**:
+
+The MCP server works with ANY MCP-compatible client:
+
+- **Claude Desktop/Code**: Add server to MCP settings
+- **OpenAI GPT**: Use MCP adapter libraries
+- **Google Gemini**: Via MCP client SDK
+- **Custom Agents**: Any MCP protocol implementation
+
+Example with generic MCP client:
 ```python
 from mcp import Client
 
@@ -81,9 +90,9 @@ await client.call_tool("set_operation_mode", {"mode": "autonomous"})
 The system consists of three main layers:
 
 ```
-AI Layer (Claude, GPT-4, etc.)
+AI Agent Layer (Any MCP Client)
     ↓ MCP Protocol
-MCP Server (Bridge)
+MCP Server (Universal Bridge)
     ↓ ROS2/AD API
 Autoware Stack (Autonomous Driving)
 ```
