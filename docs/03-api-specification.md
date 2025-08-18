@@ -436,25 +436,124 @@ interface SafetyEvent extends SystemEvent {
 }
 ```
 
-## 3. Autoware AD API Mappings
+## 3. Autoware AD API Integration
 
-### 3.1 Service Mappings
+### 3.1 Operation Mode Management
 
-| MCP Tool | AD API Service | ROS2 Fallback |
-|----------|---------------|---------------|
-| set_operation_mode | /api/operation_mode/change_to_* | /system/operation_mode/change |
-| plan_route | /api/routing/set_route_points | /planning/mission_planning/route |
-| control_vehicle | /api/control/command/* | /control/command/control_cmd |
-| get_vehicle_state | /api/vehicle/kinematics | /localization/kinematic_state |
+| AD API Endpoint                              | Method  | MCP Tool                 | Description                    |
+|----------------------------------------------|---------|--------------------------|--------------------------------|
+| /api/operation_mode/change_to_autonomous     | Service | set_operation_mode       | Switch to autonomous driving   |
+| /api/operation_mode/change_to_local          | Service | set_operation_mode       | Switch to local manual control |
+| /api/operation_mode/change_to_remote         | Service | set_operation_mode       | Switch to remote control       |
+| /api/operation_mode/change_to_stop           | Service | set_operation_mode       | Stop vehicle operation         |
+| /api/operation_mode/enable_autoware_control  | Service | enable_autoware_control  | Enable Autoware control        |
+| /api/operation_mode/disable_autoware_control | Service | disable_autoware_control | Disable Autoware control       |
+| /api/operation_mode/state                    | Topic   | monitor_operation_mode   | Monitor operation mode state   |
 
-### 3.2 Topic Mappings
+### 3.2 Routing and Navigation
 
-| Data Stream | AD API Topic | ROS2 Topic |
-|-------------|-------------|------------|
-| Perception Objects | /api/perception/objects | /perception/object_recognition/objects |
-| Vehicle Status | /api/vehicle/status | /vehicle/status |
-| Trajectory | - | /planning/scenario_planning/trajectory |
-| Diagnostics | /api/system/diagnostics/status | /diagnostics_agg |
+| AD API Endpoint                  | Method  | MCP Tool              | Description               |
+|----------------------------------|---------|-----------------------|---------------------------|
+| /api/routing/set_route           | Service | set_route             | Set route using goal pose |
+| /api/routing/set_route_points    | Service | set_route_points      | Set route with waypoints  |
+| /api/routing/change_route        | Service | change_route          | Modify current route      |
+| /api/routing/change_route_points | Service | change_route_points   | Modify route waypoints    |
+| /api/routing/clear_route         | Service | clear_route           | Clear current route       |
+| /api/routing/route               | Topic   | get_current_route     | Get current route state   |
+| /api/routing/state               | Topic   | monitor_routing_state | Monitor routing state     |
+
+### 3.3 Localization
+
+| AD API Endpoint                        | Method  | MCP Tool                   | Description                  |
+|----------------------------------------|---------|----------------------------|------------------------------|
+| /api/localization/initialize           | Service | initialize_localization    | Initialize pose estimation   |
+| /api/localization/initialization_state | Topic   | monitor_localization_state | Monitor initialization state |
+
+### 3.4 Vehicle Control
+
+| AD API Endpoint                   | Method  | MCP Tool                  | Description               |
+|-----------------------------------|---------|---------------------------|---------------------------|
+| /api/control/command/velocity     | Stream  | send_velocity_command     | Send velocity control     |
+| /api/control/command/acceleration | Stream  | send_acceleration_command | Send acceleration control |
+| /api/control/command/steering     | Stream  | send_steering_command     | Send steering control     |
+| /api/control/command/pedals       | Stream  | send_pedals_command       | Send pedal control        |
+| /api/motion/accept_start          | Service | accept_start_request      | Accept motion start       |
+| /api/motion/state                 | Topic   | monitor_motion_state      | Monitor motion state      |
+
+### 3.5 Manual Control (Local/Remote)
+
+| AD API Endpoint                        | Method  | MCP Tool                   | Description                |
+|----------------------------------------|---------|----------------------------|----------------------------|
+| /api/manual/local/command/*            | Stream  | send_local_manual_command  | Local manual control       |
+| /api/manual/local/control_mode/select  | Service | select_local_control_mode  | Select local control mode  |
+| /api/manual/local/control_mode/list    | Service | list_local_control_modes   | List available modes       |
+| /api/manual/remote/command/*           | Stream  | send_remote_manual_command | Remote manual control      |
+| /api/manual/remote/control_mode/select | Service | select_remote_control_mode | Select remote control mode |
+| /api/manual/remote/operator/heartbeat  | Stream  | send_operator_heartbeat    | Operator heartbeat signal  |
+
+### 3.6 Vehicle Information
+
+| AD API Endpoint            | Method  | MCP Tool                   | Description                 |
+|----------------------------|---------|----------------------------|-----------------------------|
+| /api/vehicle/dimensions    | Service | get_vehicle_dimensions     | Get vehicle dimensions      |
+| /api/vehicle/kinematics    | Stream  | monitor_vehicle_kinematics | Monitor kinematics          |
+| /api/vehicle/status        | Stream  | monitor_vehicle_status     | Monitor vehicle status      |
+| /api/vehicle/metrics       | Stream  | monitor_vehicle_metrics    | Monitor performance metrics |
+| /api/vehicle/specs         | Service | get_vehicle_specs          | Get vehicle specifications  |
+| /api/vehicle/doors/layout  | Service | get_door_layout            | Get door configuration      |
+| /api/vehicle/doors/command | Service | control_doors              | Control vehicle doors       |
+| /api/vehicle/doors/status  | Topic   | monitor_door_status        | Monitor door status         |
+
+### 3.7 Perception
+
+| AD API Endpoint         | Method | MCP Tool                   | Description                |
+|-------------------------|--------|----------------------------|----------------------------|
+| /api/perception/objects | Stream | monitor_perception_objects | Real-time object detection |
+
+### 3.8 Planning
+
+| AD API Endpoint                        | Method  | MCP Tool                  | Description               |
+|----------------------------------------|---------|---------------------------|---------------------------|
+| /api/planning/steering_factors         | Stream  | monitor_steering_factors  | Steering decision factors |
+| /api/planning/velocity_factors         | Stream  | monitor_velocity_factors  | Velocity decision factors |
+| /api/planning/cooperation/get_policies | Service | get_cooperation_policies  | Get cooperation policies  |
+| /api/planning/cooperation/set_policies | Service | set_cooperation_policies  | Set cooperation policies  |
+| /api/planning/cooperation/set_commands | Service | send_cooperation_commands | Send cooperation commands |
+
+### 3.9 Fail-Safe System
+
+| AD API Endpoint                     | Method  | MCP Tool             | Description            |
+|-------------------------------------|---------|----------------------|------------------------|
+| /api/fail_safe/mrm_state            | Topic   | monitor_mrm_state    | Monitor MRM state      |
+| /api/fail_safe/list_mrm_description | Service | list_mrm_behaviors   | List MRM behaviors     |
+| /api/fail_safe/mrm_request/send     | Service | request_mrm          | Request MRM activation |
+| /api/fail_safe/mrm_request/list     | Topic   | monitor_mrm_requests | Monitor MRM requests   |
+| /api/fail_safe/rti_state            | Topic   | monitor_rti_state    | Monitor RTI state      |
+
+### 3.10 System Monitoring
+
+| AD API Endpoint                | Method  | MCP Tool                  | Description               |
+|--------------------------------|---------|---------------------------|---------------------------|
+| /api/system/diagnostics/status | Stream  | monitor_diagnostics       | Real-time diagnostics     |
+| /api/system/diagnostics/struct | Topic   | get_diagnostics_structure | Get diagnostics structure |
+| /api/system/diagnostics/reset  | Service | reset_diagnostics         | Reset diagnostics         |
+| /api/system/heartbeat          | Stream  | monitor_system_heartbeat  | System heartbeat          |
+| /api/interface/version         | Service | get_api_version           | Get API version           |
+
+### 3.11 Topic Fallback Mappings
+
+| Data Category       | AD API Topic                   | ROS2 Fallback Topic                    |
+|---------------------|--------------------------------|----------------------------------------|
+| Perception Objects  | /api/perception/objects        | /perception/object_recognition/objects |
+| Vehicle Status      | /api/vehicle/status            | /vehicle/status                        |
+| Vehicle Kinematics  | /api/vehicle/kinematics        | /localization/kinematic_state          |
+| Planning Trajectory | -                              | /planning/scenario_planning/trajectory |
+| Diagnostics         | /api/system/diagnostics/status | /diagnostics                           |
+| Operation Mode      | /api/operation_mode/state      | /system/operation_mode/state           |
+| MRM State           | /api/fail_safe/mrm_state       | /system/fail_safe/mrm_state            |
+| Routing State       | /api/routing/state             | /planning/mission_planning/state       |
+| Steering Factors    | /api/planning/steering_factors | /planning/steering_factor/*            |
+| Velocity Factors    | /api/planning/velocity_factors | /planning/velocity_factors/*           |
 
 ## 4. Streaming Protocols
 
