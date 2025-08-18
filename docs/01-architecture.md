@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-The Autoware MCP Integration project provides a bridge between AI systems (such as Claude) and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This architecture enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making while maintaining safety and performance requirements.
+The Autoware MCP Server provides a standardized bridge between AI agents (Claude, GPT, Gemini, or any MCP-compatible client) and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This architecture enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making while maintaining safety and performance requirements. The server is designed to be agent-agnostic, working with any AI system that supports the MCP protocol.
 
 ## 2. Design Principles
 
@@ -29,8 +29,8 @@ The Autoware MCP Integration project provides a bridge between AI systems (such 
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                        AI Layer                            │
-│  (Claude, GPT-4, or other AI with planning capabilities)   │
+│                     AI Agent Layer                         │
+│  (Any MCP Client: Claude, GPT, Gemini, Custom Agents)      │
 └────────────────────────────────────────────────────────────┘
                               │
                     MCP Protocol (JSON-RPC)
@@ -236,11 +236,13 @@ Raw Topics    Detected Objs    Trajectories        AI Updates
 
 ## 11. Framework Integrations
 
-### 11.1 AI Frameworks
-- OpenAI API compatibility
-- Anthropic Claude integration
-- Custom LLM support
+### 11.1 MCP Client Compatibility
+- Anthropic Claude (Desktop, Code, API)
+- OpenAI GPT (via MCP adapter)
+- Google Gemini (via MCP adapter)
+- Custom AI agents with MCP support
 - Multi-agent systems
+- Any future MCP-compatible clients
 
 ### 11.2 Simulation Frameworks
 - AWSIM for urban testing
