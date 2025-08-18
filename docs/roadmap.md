@@ -1,213 +1,262 @@
 # Autoware MCP Development Roadmap
 
 ## Overview
-This roadmap outlines the phased development approach for the Autoware Model Context Protocol (MCP) server. Each phase builds upon the previous one, allowing for incremental testing and validation.
+This roadmap outlines the development approach for the Autoware Model Context Protocol (MCP) server. Each phase builds upon the previous one, allowing for incremental testing and validation.
 
-## Phase 1: Foundation & Core Infrastructure
+## ✅ Phase 1: Foundation & Core Infrastructure (COMPLETED)
 **Goal:** Establish the basic MCP server framework and ROS2 communication layer
 
-### Work Items
-- [ ] Set up MCP server skeleton with FastMCP framework
-- [ ] Implement ROS2 node initialization and lifecycle management
-- [ ] Create basic configuration system for Autoware paths and settings
-- [ ] Implement health check and status monitoring endpoints
-- [ ] Set up logging infrastructure
-- [ ] Create unit tests for core components
+### Completed Items
+- ✅ Set up MCP server skeleton with FastMCP framework
+- ✅ Implement ROS2 node initialization and lifecycle management
+- ✅ Create basic configuration system for Autoware paths and settings
+- ✅ Implement health check and status monitoring endpoints
+- ✅ Set up logging infrastructure
+- ✅ Create basic testing infrastructure
 
-### Testing Milestones
-- MCP server starts and responds to basic queries
-- Can detect Autoware installation and verify paths
-- Health check endpoint returns system status
+### Achievements
+- MCP server starts and responds to queries
+- Can detect Autoware installation and verify environment
+- Health check endpoint returns comprehensive system status
 
-## Phase 2: Basic ROS2 Operations
+## ✅ Phase 2: Basic ROS2 Operations (COMPLETED)
 **Goal:** Enable fundamental ROS2 interactions through MCP
 
+### Completed Items
+- ✅ Implement topic listing and information retrieval
+- ✅ Create node listing and status checking
+- ✅ Add service discovery functionality
+- ✅ Implement topic echo functionality
+- ✅ Add topic frequency measurement
+- ✅ Create Autoware component detection
+
+### Achievements
+- Can list all active topics, nodes, and services
+- Can echo topic messages and measure frequency
+- Autoware components are properly categorized
+
+## ✅ Phase 3: Autoware AD API Integration (COMPLETED)
+**Goal:** Implement official Autoware AD API endpoints
+
+### Completed Items
+- ✅ Document comprehensive AD API mappings
+- ✅ Implement operation mode control services
+- ✅ Add routing and navigation services
+- ✅ Implement localization initialization
+- ✅ Add fail-safe (MRM) system integration
+- ✅ Create vehicle control command interfaces
+- ✅ Implement cooperation planning APIs
+- ✅ Add integration tests for AD API
+
+### Achievements
+- Can change operation modes through AD API
+- Can set and modify routes with waypoints
+- MRM behaviors are accessible and controllable
+- Full vehicle control via velocity, acceleration, steering, and pedals
+- Cooperation planning policies implemented
+- System diagnostics and monitoring available
+
+## Phase 4: Advanced Monitoring & Diagnostics
+**Goal:** Enhanced system monitoring and diagnostics
+
 ### Work Items
-- [ ] Implement topic listing and information retrieval
-- [ ] Create node listing and status checking
-- [ ] Add service discovery functionality
-- [ ] Implement parameter server interactions (get/set)
-- [ ] Create message type introspection tools
-- [ ] Add integration tests for ROS2 operations
-
-### Testing Milestones
-- Can list all active topics and nodes
-- Can read and modify ROS2 parameters
-- Message types are correctly identified
-
-## Phase 3: Autoware Process Management
-**Goal:** Manage Autoware launch files and processes
-
-### Work Items
-- [ ] Implement launch file discovery and parsing
-- [ ] Create process launching capabilities for Autoware modules
-- [ ] Add process monitoring and management (start/stop/restart)
-- [ ] Implement log collection and streaming
-- [ ] Create launch configuration management
-- [ ] Add resource usage monitoring
-
-### Testing Milestones
-- Can launch Autoware planning/perception/control stacks
-- Process lifecycle is properly managed
-- Logs are accessible through MCP
-
-## Phase 4: Data Streaming & Monitoring
-**Goal:** Enable real-time data access and monitoring
-
-### Work Items
-- [ ] Implement topic subscription with data streaming
-- [ ] Create data filtering and sampling mechanisms
+- [ ] Implement real-time diagnostics streaming
 - [ ] Add performance metrics collection
-- [ ] Implement diagnostic message aggregation
-- [ ] Create data recording triggers
-- [ ] Add bandwidth management for streaming
+- [ ] Create component health monitoring
+- [ ] Implement diagnostic graph visualization
+- [ ] Add automatic issue detection
+- [ ] Create performance profiling tools
 
 ### Testing Milestones
-- Can stream sensor data (lidar, camera) efficiently
-- Diagnostic information is aggregated and accessible
-- Performance metrics are tracked accurately
+- Diagnostic data is aggregated and accessible
+- Performance bottlenecks are identified
+- Component failures are detected automatically
 
-## Phase 5: Advanced Autoware Control
-**Goal:** Enable sophisticated Autoware operations
+## Phase 5: Mission & Behavior Control
+**Goal:** High-level mission planning and behavior control
 
 ### Work Items
-- [ ] Implement trajectory planning interfaces
-- [ ] Create mission planning tools
-- [ ] Add vehicle control command interfaces
-- [ ] Implement map loading and management
-- [ ] Create calibration adjustment tools
-- [ ] Add scenario execution capabilities
+- [ ] Implement mission planning interfaces
+- [ ] Add behavior tree execution
+- [ ] Create scenario execution capabilities
+- [ ] Implement waypoint following
+- [ ] Add parking and docking behaviors
+- [ ] Create multi-goal navigation
 
 ### Testing Milestones
-- Can send navigation goals and monitor execution
-- Vehicle commands are properly validated
-- Map operations work correctly
+- Can execute complex multi-step missions
+- Behavior transitions work smoothly
+- Parking scenarios execute successfully
 
-## Phase 6: Simulation Integration
-**Goal:** Support simulation environments and testing
+## Phase 6: Data Management & Recording
+**Goal:** Efficient data handling and recording
 
 ### Work Items
-- [ ] Integrate with Autoware simulation environments
-- [ ] Implement scenario replay functionality
-- [ ] Create synthetic data injection capabilities
-- [ ] Add time control for simulation
-- [ ] Implement automated testing frameworks
-- [ ] Create performance benchmarking tools
+- [ ] Implement selective topic recording
+- [ ] Add data replay functionality
+- [ ] Create data filtering and sampling
+- [ ] Implement bandwidth optimization
+- [ ] Add data format conversion
+- [ ] Create offline analysis tools
 
 ### Testing Milestones
-- Can run full simulation scenarios
-- Time synchronization works properly
-- Test scenarios execute reliably
+- Can record and replay scenarios
+- Data bandwidth is optimized
+- Offline analysis works correctly
 
-## Phase 7: AI Assistant Integration
-**Goal:** Optimize for AI assistant interactions
+## Phase 7: Safety & Validation
+**Goal:** Comprehensive safety systems and validation
 
 ### Work Items
-- [ ] Create high-level operation abstractions
-- [ ] Implement context-aware command suggestions
-- [ ] Add natural language parameter descriptions
-- [ ] Create troubleshooting and diagnostic helpers
-- [ ] Implement safety validation layers
-- [ ] Add operation history and rollback capabilities
+- [ ] Implement safety constraint checking
+- [ ] Add trajectory validation
+- [ ] Create emergency stop mechanisms
+- [ ] Implement geofencing
+- [ ] Add collision prediction
+- [ ] Create safety certification tools
 
 ### Testing Milestones
-- AI assistants can effectively control Autoware
-- Safety checks prevent dangerous operations
-- Context is properly maintained across sessions
+- Safety constraints are enforced
+- Emergency stops work reliably
+- Trajectories are validated before execution
 
-## Phase 8: Production Readiness
-**Goal:** Prepare for production deployment
+## Phase 8: AI Agent Optimization
+**Goal:** Optimize for AI agent interactions (any MCP-compatible agent)
+
+### Work Items
+- [ ] Create comprehensive tool descriptions with examples
+- [ ] Implement context preservation mechanisms
+- [ ] Add intelligent error recovery and suggestions
+- [ ] Create reusable workflow templates
+- [ ] Implement structured feedback for agents
+- [ ] Add natural language status reports
+- [ ] Ensure compatibility with various MCP clients
+
+### Testing Milestones
+- AI agents can effectively control Autoware
+- Context is maintained across sessions
+- Errors provide actionable feedback to agents
+- Works with multiple MCP client implementations
+
+## Phase 9: Production Deployment
+**Goal:** Production-ready deployment
 
 ### Work Items
 - [ ] Implement authentication and authorization
-- [ ] Add rate limiting and resource management
-- [ ] Create comprehensive error handling
-- [ ] Implement audit logging
-- [ ] Add performance optimization
-- [ ] Create deployment and packaging scripts
-- [ ] Write comprehensive documentation
+- [ ] Add rate limiting and quotas
+- [ ] Create deployment containers
+- [ ] Implement monitoring and alerting
+- [ ] Add backup and recovery
+- [ ] Create operational documentation
 
 ### Testing Milestones
-- Security measures are properly implemented
-- System handles errors gracefully
-- Performance meets requirements
-- Documentation is complete
+- Security measures are implemented
+- System scales appropriately
+- Deployment is automated
+
+## Current Priority Tasks
+
+### Immediate (Week 1-2)
+1. ✅ ~~Implement core AD API services (operation mode, routing)~~ COMPLETED
+2. ✅ ~~Add vehicle control command interfaces~~ COMPLETED
+3. ✅ ~~Create integration tests for AD API~~ COMPLETED
+4. Test AD API with real Autoware instance (when available)
+
+### Short-term (Week 3-4)
+1. Implement MRM fail-safe integration
+2. Add real-time diagnostics streaming
+3. Create mission planning interfaces
+4. Improve error handling and recovery
+
+### Medium-term (Month 2)
+1. Add data recording and replay
+2. Implement safety validation
+3. Create AI agent optimizations (MCP client agnostic)
+4. Develop workflow templates for common scenarios
 
 ## Testing Strategy
 
-### Unit Testing
-- Test individual components in isolation
-- Mock ROS2 dependencies where needed
-- Achieve >80% code coverage
+### Test Environment
+- **Primary Testing Tool**: Claude Code (for MCP tool validation)
+- **Secondary Testing**: Other MCP clients for compatibility
+- **Simulation**: Autoware planning simulator
+- **Hardware**: Optional real vehicle testing
 
-### Integration Testing
-- Test interactions with real ROS2 system
-- Verify Autoware module communication
-- Test data flow between components
+### Continuous Testing
+- Unit tests for all new components
+- Integration tests with Autoware simulator
+- End-to-end workflow validation with multiple AI agents
+- Performance benchmarking
+- MCP protocol compliance testing
 
-### System Testing
-- End-to-end scenarios with Autoware
-- Performance and stress testing
-- Simulation-based validation
+### Safety Testing
+- Emergency stop validation
+- Constraint violation detection
+- Fail-safe behavior verification
+- Edge case handling
 
-### Acceptance Testing
-- AI assistant interaction scenarios
-- User workflow validation
-- Safety and security verification
-
-## Development Principles
-
-1. **Incremental Development**: Each phase should produce a working, testable system
-2. **Backward Compatibility**: New features should not break existing functionality
-3. **Safety First**: All vehicle control operations must have safety checks
-4. **Performance Awareness**: Monitor and optimize resource usage continuously
-5. **Documentation**: Keep documentation updated with each phase
+### Agent Compatibility Testing
+- Test with Claude Code for comprehensive validation
+- Verify with other MCP clients (when available)
+- Ensure consistent behavior across different agents
+- Validate error handling for various client types
 
 ## Success Metrics
 
-- **Phase 1-2**: Basic functionality operational within 2 weeks
-- **Phase 3-4**: Core Autoware integration complete within 1 month
-- **Phase 5-6**: Advanced features operational within 2 months
-- **Phase 7-8**: Production ready within 3 months
+- **API Coverage**: >80% of AD API endpoints implemented
+- **Response Time**: <100ms for service calls
+- **Streaming Latency**: <50ms for real-time data
+- **Reliability**: >99.9% uptime
+- **Safety**: Zero safety-critical failures
 
-## Risk Mitigation
+## Risk Management
 
-### Technical Risks
-- ROS2 version compatibility issues
-- Autoware API changes
-- Performance bottlenecks with data streaming
+### Identified Risks
+- Autoware API version changes
+- ROS2 communication bottlenecks
+- Complex error recovery scenarios
 
 ### Mitigation Strategies
-- Maintain compatibility with multiple ROS2 versions
-- Abstract Autoware interfaces for flexibility
-- Implement adaptive data sampling and compression
+- Version detection and adaptation
+- Implement caching and optimization
+- Comprehensive error handling framework
 
 ## Dependencies
 
-### External Dependencies
-- ROS2 (Humble/Iron)
-- Autoware.Universe
+### Core Requirements
+- ROS2 Humble
+- Autoware.Universe (latest)
 - Python 3.10+
-- FastMCP framework
+- FastMCP 2.0+
 
 ### Development Tools
-- Rye for Python environment management
-- ROS2 development tools
-- Autoware simulation environment
-- Testing frameworks (pytest, ros2test)
+- Rye for environment management
+- pytest for testing
+- ROS2 testing tools
+- Autoware planning simulator
 
-## Review and Feedback
+## Documentation Requirements
 
-Each phase completion should include:
-1. Code review
-2. Testing verification
-3. Documentation update
-4. Performance assessment
-5. Stakeholder feedback
+### For Each Phase
+1. API documentation updates
+2. Integration examples
+3. Testing procedures
+4. Troubleshooting guides
+5. Performance benchmarks
 
-## Next Steps
+## Review Process
 
-1. Begin Phase 1 implementation
-2. Set up CI/CD pipeline
-3. Create development environment setup guide
-4. Establish testing infrastructure
+### Phase Completion Criteria
+1. All planned features implemented
+2. Tests passing with >90% coverage
+3. Documentation complete
+4. Performance targets met
+5. Security review passed
+
+## Next Immediate Actions
+
+1. **Complete AD API Implementation** - Implement remaining service calls
+2. **Enhance Error Handling** - Add comprehensive error recovery
+3. **Create Integration Tests** - Validate AD API functionality
+4. **Update Documentation** - Document new APIs and workflows
+5. **Performance Optimization** - Profile and optimize bottlenecks
