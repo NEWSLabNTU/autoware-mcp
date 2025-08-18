@@ -27,6 +27,11 @@ class AutowareConfig(BaseModel):
         description="Expected ROS2 distribution name"
     )
     
+    ad_api_url: str = Field(
+        default="http://localhost:8888",
+        description="Autoware AD API base URL"
+    )
+    
     @validator("workspace_path")
     def validate_workspace(cls, v):
         # Workspace path is now optional
@@ -73,6 +78,9 @@ class MCPConfig(BaseModel):
         
         if ros_distro := os.getenv("ROS_DISTRO"):
             config.autoware.ros_distro = ros_distro
+        
+        if ad_api_url := os.getenv("AUTOWARE_AD_API_URL"):
+            config.autoware.ad_api_url = ad_api_url
         
         if log_level := os.getenv("MCP_LOG_LEVEL"):
             config.server.log_level = log_level
