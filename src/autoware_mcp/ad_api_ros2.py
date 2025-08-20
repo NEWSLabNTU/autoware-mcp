@@ -321,11 +321,44 @@ class AutowareADAPIROS2:
 
     async def change_to_autonomous(self) -> OperationModeResponse:
         """Change to autonomous operation mode."""
+        # First enable Autoware control if needed
+        try:
+            enable_result = await self._call_service(
+                "/api/operation_mode/enable_autoware_control",
+                "std_srvs/srv/Trigger",
+                {},
+            )
+            logger.info(f"Enable control result: {enable_result}")
+        except Exception as e:
+            logger.warning(f"Failed to enable control: {e}")
+
+        # Try the AD API service first
         result = await self._call_service(
             "/api/operation_mode/change_to_autonomous",
             "autoware_adapi_v1_msgs/srv/ChangeOperationMode",
             {},
         )
+
+        # If AD API fails, try the alternative service
+        if not result.get("success"):
+            try:
+                result = await self._call_service(
+                    "/api/operation_mode/change_to_autonomous",
+                    "std_srvs/srv/Trigger",
+                    {},
+                )
+            except Exception as e:
+                logger.warning(f"Alternative autonomous mode service failed: {e}")
+
+        # If successful, accept start request for motion
+        if result.get("success"):
+            try:
+                start_result = await self._call_service(
+                    "/api/motion/accept_start", "std_srvs/srv/Trigger", {}
+                )
+                logger.info(f"Accept start result: {start_result}")
+            except Exception as e:
+                logger.warning(f"Failed to accept start: {e}")
 
         # Get current state
         state = await self.get_operation_mode_state()
@@ -337,7 +370,7 @@ class AutowareADAPIROS2:
             message=(
                 "Changed to autonomous mode"
                 if result.get("success")
-                else "Failed to change mode"
+                else "Failed to change mode - ensure localization is initialized"
             ),
             timestamp=datetime.now().isoformat(),
         )
@@ -459,14 +492,32 @@ class AutowareADAPIROS2:
             "/api/routing/set_route", "autoware_adapi_v1_msgs/srv/SetRoute", request
         )
 
+        # Parse the actual error message from the response
+        success = False
+        message = "Failed to set route"
+
+        if result.get("success") and result.get("data"):
+            # Check the response data for actual success status
+            data = result["data"]
+            if "success=True" in data or "success: true" in data:
+                success = True
+                message = "Route set successfully"
+            elif "message=" in data:
+                # Extract error message
+                import re
+
+                match = re.search(r"message='([^']*)'", data)
+                if match:
+                    message = match.group(1)
+            elif "message:" in data:
+                match = re.search(r"message:\s*(.+)", data)
+                if match:
+                    message = match.group(1).strip()
+
         return RouteResponse(
-            success=result.get("success", False),
-            message=(
-                "Route set successfully"
-                if result.get("success")
-                else "Failed to set route"
-            ),
-            route_id=f"route_{int(time.time())}" if result.get("success") else None,
+            success=success,
+            message=message,
+            route_id=f"route_{int(time.time())}" if success else None,
         )
 
     async def set_route_points(
@@ -532,28 +583,94 @@ class AutowareADAPIROS2:
     ) -> LocalizationResponse:
         """Initialize localization with a pose."""
         # Build the pose message
-        covariance = pose_with_covariance or [0.25] * 36  # Default covariance
+        # Use covariance values that match RViz 2D Pose Estimate tool defaults
+        covariance = pose_with_covariance or [
+            0.25,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.25,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.06853892326654787,
+        ]
 
-        request = {
-            "pose_with_covariance": {"pose": {"pose": pose, "covariance": covariance}}
+        # For planning simulator, publish to both /initialpose (RViz) and /initialpose3d topics
+        pose_msg = {
+            "header": {"stamp": {"sec": 0, "nanosec": 0}, "frame_id": "map"},
+            "pose": {"pose": pose, "covariance": covariance},
         }
 
-        result = await self._call_service(
-            "/api/localization/initialize",
-            "autoware_adapi_v1_msgs/srv/InitializeLocalization",
-            request,
+        # Publish to both topics for maximum compatibility
+        # /initialpose is used by RViz 2D Pose Estimate tool and planning simulator
+        # /initialpose3d is for 3D pose initialization
+        result1 = await self._publish_to_topic(
+            "/initialpose",
+            "geometry_msgs/msg/PoseWithCovarianceStamped",
+            pose_msg,
         )
 
+        result2 = await self._publish_to_topic(
+            "/initialpose3d",
+            "geometry_msgs/msg/PoseWithCovarianceStamped",
+            pose_msg,
+        )
+
+        # Also try the AD API service if available
+        try:
+            request = {
+                "pose_with_covariance": [
+                    {"pose": {"pose": pose, "covariance": covariance}}
+                ]
+            }
+
+            result3 = await self._call_service(
+                "/api/localization/initialize",
+                "autoware_adapi_v1_msgs/srv/InitializeLocalization",
+                request,
+            )
+        except Exception as e:
+            logger.warning(f"AD API localization service not available: {e}")
+            result3 = {"success": False}
+
+        success = result1 or result2 or result3.get("success", False)
+
         return LocalizationResponse(
-            success=result.get("success", False),
+            success=success,
             message=(
-                "Localization initialized"
-                if result.get("success")
+                "Localization pose published to initialpose topics"
+                if success
                 else "Failed to initialize localization"
             ),
-            initialization_state=(
-                "initialized" if result.get("success") else "uninitialized"
-            ),
+            initialization_state=("initialized" if success else "uninitialized"),
         )
 
     async def get_localization_state(self) -> Dict[str, Any]:
