@@ -1,6 +1,5 @@
 """Autoware AD API integration using ROS2 topics and services."""
 
-import asyncio
 import json
 import subprocess
 from typing import Dict, Any, Optional, List
@@ -248,7 +247,7 @@ class AutowareADAPIROS2:
                                     data[key] = (
                                         int(value) if "." not in value else float(value)
                                     )
-                                except:
+                                except (ValueError, TypeError):
                                     data[key] = value
                             else:
                                 data[key] = value
@@ -836,7 +835,9 @@ class AutowareADAPIROS2:
 
     async def get_diagnostics_status(self) -> Dict[str, Any]:
         """Get diagnostics status."""
-        result = await self._get_topic_data("/diagnostics")
+        # For now, return a simple status
+        # TODO: Parse diagnostics data when available
+        _ = await self._get_topic_data("/diagnostics")
 
         return {
             "success": True,
@@ -851,7 +852,8 @@ class AutowareADAPIROS2:
 
     async def get_system_heartbeat(self) -> Dict[str, Any]:
         """Get system heartbeat."""
-        result = await self._get_topic_data("/api/system/heartbeat")
+        # TODO: Parse heartbeat data when available
+        _ = await self._get_topic_data("/api/system/heartbeat")
 
         return {
             "success": True,

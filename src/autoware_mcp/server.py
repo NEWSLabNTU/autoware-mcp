@@ -9,10 +9,10 @@ from datetime import datetime
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from .config import get_config, MCPConfig
+from .config import get_config
 from .ros2_manager import get_ros2_manager
-from .health import get_monitor, HealthStatus
-from .logging import setup_logging, get_logger
+from .health import get_monitor
+from .logging import setup_logging
 from .ad_api_ros2 import (
     get_ad_api,
     cleanup_ad_api,
@@ -25,7 +25,6 @@ from .ad_api_ros2 import (
     LocalizationResponse,
     MRMRequest,
     MRMResponse,
-    VehicleCommand,
 )
 
 # Initialize FastMCP server
@@ -598,7 +597,7 @@ async def monitor_mrm_state() -> Dict[str, Any]:
 # Vehicle Control Commands
 @mcp.tool()
 async def send_velocity_command(
-    velocity: float = Field(..., description="Target velocity in m/s", ge=-10, le=50)
+    velocity: float = Field(..., description="Target velocity in m/s", ge=-10, le=50),
 ) -> Dict[str, Any]:
     """
     Send velocity control command.
@@ -617,7 +616,7 @@ async def send_velocity_command(
 async def send_acceleration_command(
     acceleration: float = Field(
         ..., description="Target acceleration in m/s²", ge=-5, le=3
-    )
+    ),
 ) -> Dict[str, Any]:
     """
     Send acceleration control command.
@@ -636,7 +635,7 @@ async def send_acceleration_command(
 async def send_steering_command(
     steering_angle: float = Field(
         ..., description="Steering angle in radians", ge=-0.7, le=0.7
-    )
+    ),
 ) -> Dict[str, Any]:
     """
     Send steering control command.
@@ -702,7 +701,7 @@ async def get_cooperation_policies() -> Dict[str, Any]:
 
 @mcp.tool()
 async def set_cooperation_policies(
-    policies: Dict[str, Any] = Field(..., description="Cooperation policies to set")
+    policies: Dict[str, Any] = Field(..., description="Cooperation policies to set"),
 ) -> Dict[str, Any]:
     """
     Set cooperation policies.
@@ -719,7 +718,7 @@ async def set_cooperation_policies(
 
 @mcp.tool()
 async def send_cooperation_commands(
-    commands: Dict[str, Any] = Field(..., description="Cooperation commands to send")
+    commands: Dict[str, Any] = Field(..., description="Cooperation commands to send"),
 ) -> Dict[str, Any]:
     """
     Send cooperation commands.

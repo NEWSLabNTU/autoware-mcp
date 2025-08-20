@@ -3,90 +3,122 @@
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
 import yaml
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
 
 class AutowareConfig(BaseModel):
     """Autoware configuration (optional - for reference only).
-    
+
     Note: The MCP server does not source these paths. Users must source
     their ROS2/Autoware environment before starting the server.
     """
-    
+
     workspace_path: Optional[Path] = Field(
         default=None,
-        description="Path to Autoware workspace (optional, for reference only)"
+        description="Path to Autoware workspace (optional, for reference only)",
     )
-    
+
+    setup_bash: Optional[Path] = Field(
+        default=None,
+        description="Path to setup.bash file (auto-detected if not specified)",
+    )
+
     ros_distro: str = Field(
-        default="humble",
-        description="Expected ROS2 distribution name"
+        default="humble", description="Expected ROS2 distribution name"
     )
-    
+
     ad_api_url: str = Field(
-        default="http://localhost:8888",
-        description="Autoware AD API base URL"
+        default="http://localhost:8888", description="Autoware AD API base URL"
     )
-    
-    @validator("workspace_path")
+
+    @field_validator("workspace_path", mode="before")
+    @classmethod
     def validate_workspace(cls, v):
         # Workspace path is now optional
-        if v is not None and not v.exists():
-            logger.warning(f"Workspace path does not exist: {v}")
+        if v is not None:
+            # Convert string to Path if needed
+            if isinstance(v, str):
+                v = Path(v)
+            if not v.exists():
+                logger.warning(f"Workspace path does not exist: {v}")
+        return v
+
+    @field_validator("setup_bash", mode="before")
+    @classmethod
+    def validate_setup_bash(cls, v, info):
+        # If setup_bash is not specified, try to auto-detect it
+        if v is None and info.data.get("workspace_path"):
+            workspace = info.data["workspace_path"]
+            if isinstance(workspace, str):
+                workspace = Path(workspace)
+            if workspace and workspace.exists():
+                # Check common locations for setup.bash
+                potential_paths = [
+                    workspace / "install" / "setup.bash",
+                    workspace / "install" / "local_setup.bash",
+                ]
+                for path in potential_paths:
+                    if path.exists():
+                        logger.info(f"Auto-detected setup.bash at: {path}")
+                        return path
+        elif v is not None and isinstance(v, str):
+            v = Path(v)
         return v
 
 
 class ServerConfig(BaseModel):
     """MCP Server configuration."""
-    
+
     host: str = Field(default="localhost", description="Server host")
     port: int = Field(default=8080, description="Server port")
     log_level: str = Field(default="INFO", description="Logging level")
-    max_connections: int = Field(default=10, description="Maximum concurrent connections")
+    max_connections: int = Field(
+        default=10, description="Maximum concurrent connections"
+    )
     timeout: float = Field(default=30.0, description="Operation timeout in seconds")
 
 
 class MCPConfig(BaseModel):
     """Complete MCP configuration."""
-    
+
     autoware: AutowareConfig = Field(default_factory=AutowareConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
-    
+
     @classmethod
     def from_file(cls, config_path: Path) -> "MCPConfig":
         """Load configuration from YAML file."""
         if not config_path.exists():
             return cls()
-        
+
         with open(config_path, "r") as f:
             data = yaml.safe_load(f) or {}
-        
+
         return cls(**data)
-    
+
     @classmethod
     def from_env(cls) -> "MCPConfig":
         """Load configuration from environment variables."""
         config = cls()
-        
+
         # Override with environment variables
         if workspace := os.getenv("AUTOWARE_WORKSPACE"):
             config.autoware.workspace_path = Path(workspace)
-        
+
         if ros_distro := os.getenv("ROS_DISTRO"):
             config.autoware.ros_distro = ros_distro
-        
+
         if ad_api_url := os.getenv("AUTOWARE_AD_API_URL"):
             config.autoware.ad_api_url = ad_api_url
-        
+
         if log_level := os.getenv("MCP_LOG_LEVEL"):
             config.server.log_level = log_level
-        
+
         return config
-    
+
     def save(self, config_path: Path):
         """Save configuration to YAML file."""
         config_path.parent.mkdir(parents=True, exist_ok=True)
