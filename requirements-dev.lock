@@ -98,6 +98,7 @@ jsonschema-path==0.3.4
 jsonschema-specifications==2025.4.1
     # via jsonschema
     # via openapi-schema-validator
+lark-parser==0.12.0
 lazy-object-proxy==1.11.0
     # via openapi-spec-validator
 markdown-it-py==4.0.0

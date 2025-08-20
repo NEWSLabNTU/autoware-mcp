@@ -13,13 +13,19 @@ from .config import get_config, MCPConfig
 from .ros2_manager import get_ros2_manager
 from .health import get_monitor, HealthStatus
 from .logging import setup_logging, get_logger
-from .ad_api import (
-    get_ad_api, cleanup_ad_api,
-    OperationMode, OperationModeRequest, OperationModeResponse,
-    RouteRequest, RouteResponse,
-    LocalizationRequest, LocalizationResponse,
-    MRMRequest, MRMResponse,
-    VehicleCommand
+from .ad_api_ros2 import (
+    get_ad_api,
+    cleanup_ad_api,
+    OperationMode,
+    OperationModeRequest,
+    OperationModeResponse,
+    RouteRequest,
+    RouteResponse,
+    LocalizationRequest,
+    LocalizationResponse,
+    MRMRequest,
+    MRMResponse,
+    VehicleCommand,
 )
 
 # Initialize FastMCP server
@@ -187,7 +193,7 @@ async def list_ros2_services() -> List[str]:
 
 @mcp.tool()
 async def get_topic_info(
-    topic_name: str = Field(description="Name of the ROS2 topic")
+    topic_name: str = Field(description="Name of the ROS2 topic"),
 ) -> Dict[str, Any]:
     """
     Get detailed information about a specific ROS2 topic.
@@ -207,7 +213,9 @@ async def get_topic_info(
 @mcp.tool()
 async def get_topic_frequency(
     topic_name: str = Field(description="Name of the ROS2 topic"),
-    duration: float = Field(default=5.0, description="Duration to measure frequency (seconds)")
+    duration: float = Field(
+        default=5.0, description="Duration to measure frequency (seconds)"
+    ),
 ) -> Dict[str, Any]:
     """
     Measure the publishing frequency of a ROS2 topic.
@@ -228,7 +236,7 @@ async def get_topic_frequency(
 @mcp.tool()
 async def echo_topic_messages(
     topic_name: str = Field(description="Name of the ROS2 topic"),
-    count: int = Field(default=1, description="Number of messages to capture")
+    count: int = Field(default=1, description="Number of messages to capture"),
 ) -> Dict[str, Any]:
     """
     Capture and return messages from a ROS2 topic.
@@ -244,6 +252,84 @@ async def echo_topic_messages(
     await ros2_manager.initialize()
     messages = await ros2_manager.echo_topic(topic_name, count)
     return messages
+
+
+# Generic ROS2 interaction tools
+@mcp.tool()
+async def call_ros2_service(
+    service_name: str = Field(
+        ..., description="Full service name (e.g., /api/routing/clear_route)"
+    ),
+    service_type: str = Field(
+        ..., description="Service type (e.g., std_srvs/srv/Trigger)"
+    ),
+    request: Dict[str, Any] = Field(
+        default={}, description="Service request data as JSON"
+    ),
+) -> Dict[str, Any]:
+    """
+    Call any ROS2 service directly.
+
+    This is a powerful generic tool that can call any ROS2 service in the system.
+    Use 'list_ros2_services' to discover available services.
+
+    Examples:
+    - Clear route: call_ros2_service("/api/routing/clear_route", "autoware_adapi_v1_msgs/srv/ClearRoute", {})
+    - Enable control: call_ros2_service("/api/operation_mode/enable_autoware_control", "std_srvs/srv/Trigger", {})
+    - Accept start: call_ros2_service("/api/motion/accept_start", "std_srvs/srv/Trigger", {})
+
+    Returns:
+    - success: Whether the service call succeeded
+    - response: The service response data
+    - error: Error message if call failed
+    """
+    logger.info(f"Calling ROS2 service: {service_name}")
+
+    try:
+        result = await ros2_manager.call_service(service_name, service_type, request)
+        return {
+            "success": result.get("success", False),
+            "response": result.get("data", {}),
+            "error": result.get("error", None),
+        }
+    except Exception as e:
+        logger.error(f"Service call failed: {e}")
+        return {"success": False, "response": {}, "error": str(e)}
+
+
+@mcp.tool()
+async def publish_to_topic(
+    topic_name: str = Field(..., description="Topic name to publish to"),
+    message_type: str = Field(
+        ..., description="Message type (e.g., geometry_msgs/msg/Twist)"
+    ),
+    message: Dict[str, Any] = Field(..., description="Message data to publish as JSON"),
+) -> Dict[str, Any]:
+    """
+    Publish a message to any ROS2 topic.
+
+    This tool allows publishing to any ROS2 topic with the appropriate message type.
+    Use 'get_topic_info' to discover the message type for a topic.
+
+    Examples:
+    - Publish twist: publish_to_topic("/cmd_vel", "geometry_msgs/msg/Twist", {"linear": {"x": 1.0}, "angular": {"z": 0.5}})
+    - Publish initial pose: publish_to_topic("/initialpose", "geometry_msgs/msg/PoseWithCovarianceStamped", {...})
+
+    Returns:
+    - success: Whether the publish succeeded
+    - error: Error message if publish failed
+    """
+    logger.info(f"Publishing to topic: {topic_name}")
+
+    try:
+        success = await ros2_manager.publish_to_topic(topic_name, message_type, message)
+        return {
+            "success": success,
+            "error": None if success else "Failed to publish message",
+        }
+    except Exception as e:
+        logger.error(f"Topic publish failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # Configuration management
@@ -290,14 +376,14 @@ async def verify_ros2_environment() -> Dict[str, Any]:
         "ROS_DOMAIN_ID": os.environ.get("ROS_DOMAIN_ID"),
         "AMENT_PREFIX_PATH": os.environ.get("AMENT_PREFIX_PATH"),
     }
-    
+
     result["environment"] = {k: v for k, v in env_vars.items() if v is not None}
-    
+
     if not env_vars["ROS_DISTRO"]:
         result["errors"].append(
             "ROS_DISTRO not set. Please source your ROS2/Autoware setup.bash first."
         )
-    
+
     if not env_vars["AMENT_PREFIX_PATH"]:
         result["warnings"].append(
             "AMENT_PREFIX_PATH not set. ROS2 environment may not be properly sourced."
@@ -316,8 +402,7 @@ async def verify_ros2_environment() -> Dict[str, Any]:
     # Check if we can list topics (ultimate test of ROS2 working)
     try:
         topics_result = await ros2_manager.run_command(
-            ["ros2", "topic", "list", "--spin-time", "0"],
-            timeout=5.0
+            ["ros2", "topic", "list", "--spin-time", "0"], timeout=5.0
         )
         result["checks"]["can_list_topics"] = topics_result["returncode"] == 0
     except Exception:
@@ -325,8 +410,7 @@ async def verify_ros2_environment() -> Dict[str, Any]:
 
     # Determine overall validity
     result["valid"] = (
-        result["checks"].get("ros2_available", False) and
-        len(result["errors"]) == 0
+        result["checks"].get("ros2_available", False) and len(result["errors"]) == 0
     )
 
     logger.info(
@@ -339,26 +423,27 @@ async def verify_ros2_environment() -> Dict[str, Any]:
 # Autoware AD API Tools
 # =============================================================================
 
+
 # Operation Mode Management
 @mcp.tool()
 async def set_operation_mode(request: OperationModeRequest) -> OperationModeResponse:
     """
     Change vehicle operation mode.
-    
+
     Modes:
     - stop: Stop vehicle operation
     - autonomous: Switch to autonomous driving
     - local: Switch to local manual control
     - remote: Switch to remote control
-    
+
     Args:
         request: Operation mode request with mode and optional transition time
-    
+
     Returns:
         Operation mode response with success status and current mode
     """
     logger.info(f"Setting operation mode to: {request.mode}")
-    
+
     if request.mode == OperationMode.AUTONOMOUS:
         return await ad_api.change_to_autonomous()
     elif request.mode == OperationMode.STOP:
@@ -373,39 +458,15 @@ async def set_operation_mode(request: OperationModeRequest) -> OperationModeResp
             current_mode="unknown",
             requested_mode=request.mode,
             message=f"Unknown operation mode: {request.mode}",
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
-
-
-@mcp.tool()
-async def enable_autoware_control() -> Dict[str, Any]:
-    """
-    Enable Autoware control.
-    
-    Returns:
-        Success status and message
-    """
-    logger.info("Enabling Autoware control")
-    return await ad_api.enable_autoware_control()
-
-
-@mcp.tool()
-async def disable_autoware_control() -> Dict[str, Any]:
-    """
-    Disable Autoware control.
-    
-    Returns:
-        Success status and message
-    """
-    logger.info("Disabling Autoware control")
-    return await ad_api.disable_autoware_control()
 
 
 @mcp.tool()
 async def monitor_operation_mode() -> Dict[str, Any]:
     """
     Monitor current operation mode state.
-    
+
     Returns:
         Current operation mode and control state
     """
@@ -418,15 +479,15 @@ async def monitor_operation_mode() -> Dict[str, Any]:
 async def set_route(request: RouteRequest) -> RouteResponse:
     """
     Set a route to a goal pose.
-    
+
     Args:
         request: Route request with goal pose and optional waypoints
-    
+
     Returns:
         Route response with success status and route information
     """
     logger.info("Setting route")
-    
+
     if request.waypoints:
         return await ad_api.set_route_points(request.waypoints, request.option)
     else:
@@ -436,15 +497,15 @@ async def set_route(request: RouteRequest) -> RouteResponse:
 @mcp.tool()
 async def set_route_points(
     waypoints: List[Dict[str, Any]] = Field(..., description="Waypoints for the route"),
-    option: Optional[Dict[str, Any]] = Field(default=None, description="Route options")
+    option: Optional[Dict[str, Any]] = Field(default=None, description="Route options"),
 ) -> RouteResponse:
     """
     Set a route with specific waypoints.
-    
+
     Args:
         waypoints: List of waypoints with position and orientation
         option: Optional route options
-    
+
     Returns:
         Route response with success status and route information
     """
@@ -453,22 +514,10 @@ async def set_route_points(
 
 
 @mcp.tool()
-async def clear_route() -> Dict[str, Any]:
-    """
-    Clear the current route.
-    
-    Returns:
-        Success status and message
-    """
-    logger.info("Clearing route")
-    return await ad_api.clear_route()
-
-
-@mcp.tool()
 async def get_current_route() -> Dict[str, Any]:
     """
     Get current route state.
-    
+
     Returns:
         Current route information including waypoints and progress
     """
@@ -481,22 +530,24 @@ async def get_current_route() -> Dict[str, Any]:
 async def initialize_localization(request: LocalizationRequest) -> LocalizationResponse:
     """
     Initialize localization with a pose.
-    
+
     Args:
         request: Localization request with initial pose
-    
+
     Returns:
         Localization response with success status
     """
     logger.info("Initializing localization")
-    return await ad_api.initialize_localization(request.pose, request.pose_with_covariance)
+    return await ad_api.initialize_localization(
+        request.pose, request.pose_with_covariance
+    )
 
 
 @mcp.tool()
 async def monitor_localization_state() -> Dict[str, Any]:
     """
     Monitor localization initialization state.
-    
+
     Returns:
         Current localization state and quality metrics
     """
@@ -509,10 +560,10 @@ async def monitor_localization_state() -> Dict[str, Any]:
 async def request_mrm(request: MRMRequest) -> MRMResponse:
     """
     Request a Minimum Risk Maneuver (MRM).
-    
+
     Args:
         request: MRM request with behavior type and optional reason
-    
+
     Returns:
         MRM response with success status and current state
     """
@@ -524,7 +575,7 @@ async def request_mrm(request: MRMRequest) -> MRMResponse:
 async def list_mrm_behaviors() -> List[str]:
     """
     List available MRM behaviors.
-    
+
     Returns:
         List of available MRM behavior types
     """
@@ -536,7 +587,7 @@ async def list_mrm_behaviors() -> List[str]:
 async def monitor_mrm_state() -> Dict[str, Any]:
     """
     Monitor current MRM state.
-    
+
     Returns:
         Current MRM state and active behaviors
     """
@@ -551,10 +602,10 @@ async def send_velocity_command(
 ) -> Dict[str, Any]:
     """
     Send velocity control command.
-    
+
     Args:
         velocity: Target velocity in m/s
-    
+
     Returns:
         Command acknowledgment
     """
@@ -564,14 +615,16 @@ async def send_velocity_command(
 
 @mcp.tool()
 async def send_acceleration_command(
-    acceleration: float = Field(..., description="Target acceleration in m/s²", ge=-5, le=3)
+    acceleration: float = Field(
+        ..., description="Target acceleration in m/s²", ge=-5, le=3
+    )
 ) -> Dict[str, Any]:
     """
     Send acceleration control command.
-    
+
     Args:
         acceleration: Target acceleration in m/s²
-    
+
     Returns:
         Command acknowledgment
     """
@@ -581,14 +634,16 @@ async def send_acceleration_command(
 
 @mcp.tool()
 async def send_steering_command(
-    steering_angle: float = Field(..., description="Steering angle in radians", ge=-0.7, le=0.7)
+    steering_angle: float = Field(
+        ..., description="Steering angle in radians", ge=-0.7, le=0.7
+    )
 ) -> Dict[str, Any]:
     """
     Send steering control command.
-    
+
     Args:
         steering_angle: Steering angle in radians
-    
+
     Returns:
         Command acknowledgment
     """
@@ -598,16 +653,18 @@ async def send_steering_command(
 
 @mcp.tool()
 async def send_pedals_command(
-    throttle: float = Field(default=0.0, description="Throttle position (0-1)", ge=0, le=1),
-    brake: float = Field(default=0.0, description="Brake position (0-1)", ge=0, le=1)
+    throttle: float = Field(
+        default=0.0, description="Throttle position (0-1)", ge=0, le=1
+    ),
+    brake: float = Field(default=0.0, description="Brake position (0-1)", ge=0, le=1),
 ) -> Dict[str, Any]:
     """
     Send pedals control command.
-    
+
     Args:
         throttle: Throttle position (0-1)
         brake: Brake position (0-1)
-    
+
     Returns:
         Command acknowledgment
     """
@@ -616,23 +673,13 @@ async def send_pedals_command(
 
 
 # Motion Control
-@mcp.tool()
-async def accept_start_request() -> Dict[str, Any]:
-    """
-    Accept motion start request.
-    
-    Returns:
-        Success status and message
-    """
-    logger.info("Accepting start request")
-    return await ad_api.accept_start_request()
 
 
 @mcp.tool()
 async def monitor_motion_state() -> Dict[str, Any]:
     """
     Monitor current motion state.
-    
+
     Returns:
         Current motion state and readiness
     """
@@ -645,7 +692,7 @@ async def monitor_motion_state() -> Dict[str, Any]:
 async def get_cooperation_policies() -> Dict[str, Any]:
     """
     Get current cooperation policies.
-    
+
     Returns:
         Active cooperation policies
     """
@@ -659,10 +706,10 @@ async def set_cooperation_policies(
 ) -> Dict[str, Any]:
     """
     Set cooperation policies.
-    
+
     Args:
         policies: Cooperation policies configuration
-    
+
     Returns:
         Success status and active policies
     """
@@ -676,10 +723,10 @@ async def send_cooperation_commands(
 ) -> Dict[str, Any]:
     """
     Send cooperation commands.
-    
+
     Args:
         commands: Cooperation commands
-    
+
     Returns:
         Command acknowledgment
     """
@@ -692,7 +739,7 @@ async def send_cooperation_commands(
 async def monitor_diagnostics() -> Dict[str, Any]:
     """
     Get real-time diagnostics status.
-    
+
     Returns:
         Comprehensive diagnostics information
     """
@@ -704,7 +751,7 @@ async def monitor_diagnostics() -> Dict[str, Any]:
 async def reset_diagnostics() -> Dict[str, Any]:
     """
     Reset diagnostics.
-    
+
     Returns:
         Success status and message
     """
@@ -716,7 +763,7 @@ async def reset_diagnostics() -> Dict[str, Any]:
 async def monitor_system_heartbeat() -> Dict[str, Any]:
     """
     Monitor system heartbeat.
-    
+
     Returns:
         System heartbeat status
     """
@@ -726,39 +773,54 @@ async def monitor_system_heartbeat() -> Dict[str, Any]:
 
 # Vehicle Information
 @mcp.tool()
-async def get_vehicle_dimensions() -> Dict[str, Any]:
+async def get_vehicle_state() -> Dict[str, Any]:
     """
-    Get vehicle dimensions.
-    
+    Get comprehensive vehicle state including dimensions, status, and kinematics.
+
+    This unified tool combines vehicle dimensions, current status (speed, gear, steering),
+    and kinematics (position, orientation, velocity) into a single response.
+
     Returns:
-        Vehicle dimensions including length, width, height
+        Complete vehicle state information including:
+        - dimensions: Vehicle physical dimensions
+        - status: Current gear, speed, steering angle
+        - kinematics: Position, orientation, velocities
+        - timestamp: When the data was collected
     """
-    logger.info("Getting vehicle dimensions")
-    return await ad_api.get_vehicle_dimensions()
+    logger.info("Getting comprehensive vehicle state")
 
+    # Gather all vehicle information in parallel for efficiency
+    dimensions = await ad_api.get_vehicle_dimensions()
+    status = await ad_api.get_vehicle_status()
+    kinematics = await ad_api.get_vehicle_kinematics()
 
-@mcp.tool()
-async def monitor_vehicle_status() -> Dict[str, Any]:
-    """
-    Monitor vehicle status.
-    
-    Returns:
-        Comprehensive vehicle status information
-    """
-    logger.info("Getting vehicle status")
-    return await ad_api.get_vehicle_status()
-
-
-@mcp.tool()
-async def monitor_vehicle_kinematics() -> Dict[str, Any]:
-    """
-    Monitor vehicle kinematics.
-    
-    Returns:
-        Vehicle position, velocity, and acceleration
-    """
-    logger.info("Getting vehicle kinematics")
-    return await ad_api.get_vehicle_kinematics()
+    return {
+        "success": all(
+            [
+                dimensions.get("success", False),
+                status.get("success", False),
+                kinematics.get("success", False),
+            ]
+        ),
+        "dimensions": {
+            "length": dimensions.get("length"),
+            "width": dimensions.get("width"),
+            "height": dimensions.get("height"),
+            "wheelbase": dimensions.get("wheelbase"),
+        },
+        "status": {
+            "gear": status.get("gear"),
+            "speed": status.get("speed"),
+            "steering_angle": status.get("steering_angle"),
+        },
+        "kinematics": {
+            "position": kinematics.get("position"),
+            "orientation": kinematics.get("orientation"),
+            "velocity": kinematics.get("velocity"),
+            "angular_velocity": kinematics.get("angular_velocity"),
+        },
+        "timestamp": datetime.now().isoformat(),
+    }
 
 
 # Internal server functions
@@ -795,7 +857,7 @@ async def _shutdown_server() -> Dict[str, str]:
     try:
         # Cleanup AD API resources
         await cleanup_ad_api()
-        
+
         # Cleanup ROS2 resources
         await ros2_manager.cleanup()
 
