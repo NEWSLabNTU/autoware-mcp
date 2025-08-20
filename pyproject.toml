@@ -17,7 +17,6 @@ requires-python = ">= 3.10"
 
 [project.scripts]
 autoware-mcp = "autoware_mcp.__main__:main"
-autoware-mcp-test = "autoware_mcp.cli:run_tests"
 
 [build-system]
 requires = ["hatchling"]
@@ -37,3 +36,15 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/autoware_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.rye.scripts]
+test = "python -m pytest"
+test-verbose = "python -m pytest -v"
+test-cov = "python -m pytest --cov=autoware_mcp --cov-report=term-missing"
+test-unit = "python -m pytest -m unit"
+test-integration = "python -m pytest tests/test_integration_autonomous_drive.py"
