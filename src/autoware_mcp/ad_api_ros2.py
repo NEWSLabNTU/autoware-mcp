@@ -481,16 +481,18 @@ class AutowareADAPIROS2:
         self, goal_pose: Dict[str, Any], option: Optional[Dict] = None
     ) -> RouteResponse:
         """Set a route to a goal pose."""
-        # Build request data
+        # Build request data - Use set_route_points service which is more reliable
         request = {
             "header": {"frame_id": "map"},
             "goal": goal_pose,
+            "waypoints": [],  # Empty waypoints means direct route to goal
             "option": option or {"allow_goal_modification": True},
-            "segments": [],  # Empty segments means direct route to goal
         }
 
         result = await self._call_service(
-            "/api/routing/set_route", "autoware_adapi_v1_msgs/srv/SetRoute", request
+            "/api/routing/set_route_points",
+            "autoware_adapi_v1_msgs/srv/SetRoutePoints",
+            request,
         )
 
         # Parse the actual error message from the response
