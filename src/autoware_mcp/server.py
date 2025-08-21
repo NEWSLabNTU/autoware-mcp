@@ -425,7 +425,10 @@ async def verify_ros2_environment() -> Dict[str, Any]:
 
 # Operation Mode Management
 @mcp.tool()
-async def set_operation_mode(request: OperationModeRequest) -> OperationModeResponse:
+async def set_operation_mode(
+    mode: str = Field(..., description="Operation mode: stop, autonomous, local, or remote"),
+    transition_time: float = Field(default=10.0, description="Maximum time to wait for transition (seconds)")
+) -> OperationModeResponse:
     """
     Change vehicle operation mode.
 
@@ -436,27 +439,28 @@ async def set_operation_mode(request: OperationModeRequest) -> OperationModeResp
     - remote: Switch to remote control
 
     Args:
-        request: Operation mode request with mode and optional transition time
+        mode: Operation mode (stop, autonomous, local, remote)
+        transition_time: Maximum time to wait for transition
 
     Returns:
         Operation mode response with success status and current mode
     """
-    logger.info(f"Setting operation mode to: {request.mode}")
+    logger.info(f"Setting operation mode to: {mode}")
 
-    if request.mode == OperationMode.AUTONOMOUS:
+    if mode == "autonomous" or mode == OperationMode.AUTONOMOUS:
         return await ad_api.change_to_autonomous()
-    elif request.mode == OperationMode.STOP:
+    elif mode == "stop" or mode == OperationMode.STOP:
         return await ad_api.change_to_stop()
-    elif request.mode == OperationMode.LOCAL:
+    elif mode == "local" or mode == OperationMode.LOCAL:
         return await ad_api.change_to_local()
-    elif request.mode == OperationMode.REMOTE:
+    elif mode == "remote" or mode == OperationMode.REMOTE:
         return await ad_api.change_to_remote()
     else:
         return OperationModeResponse(
             success=False,
             current_mode="unknown",
-            requested_mode=request.mode,
-            message=f"Unknown operation mode: {request.mode}",
+            requested_mode=mode,
+            message=f"Unknown operation mode: {mode}",
             timestamp=datetime.now().isoformat(),
         )
 
@@ -475,22 +479,28 @@ async def monitor_operation_mode() -> Dict[str, Any]:
 
 # Routing and Navigation
 @mcp.tool()
-async def set_route(request: RouteRequest) -> RouteResponse:
+async def set_route(
+    goal_pose: Dict[str, Any] = Field(..., description="Goal pose with position and orientation"),
+    waypoints: Optional[List[Dict[str, Any]]] = Field(default=None, description="Optional waypoints"),
+    option: Optional[Dict[str, Any]] = Field(default=None, description="Route options")
+) -> RouteResponse:
     """
     Set a route to a goal pose.
 
     Args:
-        request: Route request with goal pose and optional waypoints
+        goal_pose: Goal pose with position and orientation
+        waypoints: Optional waypoints
+        option: Route options
 
     Returns:
         Route response with success status and route information
     """
     logger.info("Setting route")
 
-    if request.waypoints:
-        return await ad_api.set_route_points(request.waypoints, request.option)
+    if waypoints:
+        return await ad_api.set_route_points(waypoints, option)
     else:
-        return await ad_api.set_route(request.goal_pose, request.option)
+        return await ad_api.set_route(goal_pose, option)
 
 
 @mcp.tool()
@@ -526,20 +536,22 @@ async def get_current_route() -> Dict[str, Any]:
 
 # Localization
 @mcp.tool()
-async def initialize_localization(request: LocalizationRequest) -> LocalizationResponse:
+async def initialize_localization(
+    pose: Dict[str, Any] = Field(..., description="Initial pose with position and orientation"),
+    pose_with_covariance: Optional[List[float]] = Field(default=None, description="Pose covariance matrix")
+) -> LocalizationResponse:
     """
     Initialize localization with a pose.
 
     Args:
-        request: Localization request with initial pose
+        pose: Initial pose with position and orientation
+        pose_with_covariance: Optional pose covariance matrix
 
     Returns:
         Localization response with success status
     """
     logger.info("Initializing localization")
-    return await ad_api.initialize_localization(
-        request.pose, request.pose_with_covariance
-    )
+    return await ad_api.initialize_localization(pose, pose_with_covariance)
 
 
 @mcp.tool()
@@ -556,18 +568,22 @@ async def monitor_localization_state() -> Dict[str, Any]:
 
 # Fail-Safe System
 @mcp.tool()
-async def request_mrm(request: MRMRequest) -> MRMResponse:
+async def request_mrm(
+    behavior: str = Field(..., description="MRM behavior type"),
+    reason: Optional[str] = Field(default=None, description="Reason for MRM request")
+) -> MRMResponse:
     """
     Request a Minimum Risk Maneuver (MRM).
 
     Args:
-        request: MRM request with behavior type and optional reason
+        behavior: MRM behavior type
+        reason: Optional reason for MRM request
 
     Returns:
         MRM response with success status and current state
     """
-    logger.info(f"Requesting MRM: {request.behavior}")
-    return await ad_api.request_mrm(request.behavior, request.reason)
+    logger.info(f"Requesting MRM: {behavior}")
+    return await ad_api.request_mrm(behavior, reason)
 
 
 @mcp.tool()

@@ -485,7 +485,8 @@ class AutowareADAPIROS2:
         request = {
             "header": {"frame_id": "map"},
             "goal": goal_pose,
-            "option": option or {},
+            "option": option or {"allow_goal_modification": True},
+            "segments": [],  # Empty segments means direct route to goal
         }
 
         result = await self._call_service(
@@ -529,7 +530,7 @@ class AutowareADAPIROS2:
             "header": {"frame_id": "map"},
             "goal": waypoints[-1] if waypoints else {},  # Last waypoint is the goal
             "waypoints": waypoints[:-1] if len(waypoints) > 1 else [],
-            "option": option or {},
+            "option": option or {"allow_goal_modification": True},
         }
 
         result = await self._call_service(
