@@ -150,7 +150,55 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - ✅ Integration tests properly working
 - ✅ Clear separation between unit and integration tests
 
-## Phase 4: Advanced Monitoring & Diagnostics
+## Phase 4: Launch Session Management 🚀
+**Goal:** Comprehensive control over ROS2 launch files and process lifecycle
+**Design:** See `docs/LAUNCH_SESSION_MANAGEMENT.md` for detailed architecture
+
+### Work Items - Core Infrastructure
+- [ ] Implement session registry with unique session IDs
+- [ ] Create PID/PGID file management in `.autoware-mcp/instance_<port>_<pid>/`
+- [ ] Add session state machine (INITIALIZED, STARTING, RUNNING, STOPPED, etc.)
+- [ ] Implement persistent state storage using SQLite
+- [ ] Create process group management for bulk signaling
+
+### Work Items - Basic Launch Control
+- [ ] Create `start_launch` tool for launching ROS2 launch files
+- [ ] Create `stop_launch` tool with graceful shutdown via PGID
+- [ ] Create `list_launch_sessions` tool for session enumeration
+- [ ] Create `get_session_status` tool with detailed session info
+- [ ] Create `get_session_logs` tool for buffered log retrieval
+
+### Work Items - Process Cleanup & Recovery
+- [ ] Implement graceful cleanup on MCP server shutdown
+- [ ] Add emergency cleanup signal handlers (SIGINT, SIGTERM)
+- [ ] Create `cleanup_orphans` tool for abandoned processes
+- [ ] Implement crash recovery on MCP server restart
+- [ ] Add stale instance detection and archival
+
+### Work Items - Advanced Launch Operations
+- [ ] Create `pause_launch` tool using SIGSTOP to process group
+- [ ] Create `resume_launch` tool using SIGCONT to process group
+- [ ] Create `restart_launch` tool (stop + start in one operation)
+- [ ] Add partial pause capability for specific nodes
+- [ ] Implement state preservation during pause/resume
+
+### Work Items - Launch Generation & Development
+- [ ] Create `generate_launch_file` tool with templates
+- [ ] Create `validate_launch_file` tool for syntax checking
+- [ ] Create `generate_node_config` tool for parameter files
+- [ ] Create `generate_custom_node` tool for Python/C++ nodes
+- [ ] Create `test_launch_file` tool (dry-run mode)
+- [ ] Create `diff_launch_sessions` tool for configuration comparison
+- [ ] Add versioning for generated files (v1, v2, v3...)
+
+### Testing Milestones
+- Launch sessions can be started and tracked persistently
+- No orphaned processes remain after MCP server crashes
+- AI agents can iteratively develop and debug launch files
+- Multiple MCP server instances can run without conflicts
+- Generated code integrates with version control
+
+## Phase 5: Advanced Monitoring & Diagnostics
 **Goal:** Enhanced system monitoring and diagnostics
 
 ### Work Items
@@ -166,7 +214,7 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - Performance bottlenecks are identified
 - Component failures are detected automatically
 
-## Phase 5: Mission & Behavior Control
+## Phase 6: Mission & Behavior Control
 **Goal:** High-level mission planning and behavior control
 
 ### Work Items
@@ -182,7 +230,7 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - Behavior transitions work smoothly
 - Parking scenarios execute successfully
 
-## Phase 6: Data Management & Recording
+## Phase 7: Data Management & Recording
 **Goal:** Efficient data handling and recording
 
 ### Work Items
@@ -198,7 +246,7 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - Data bandwidth is optimized
 - Offline analysis works correctly
 
-## Phase 7: Safety & Validation
+## Phase 8: Safety & Validation
 **Goal:** Comprehensive safety systems and validation
 
 ### Work Items
@@ -214,7 +262,7 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - Emergency stops work reliably
 - Trajectories are validated before execution
 
-## Phase 8: AI Agent Optimization
+## Phase 9: AI Agent Optimization
 **Goal:** Optimize for AI agent interactions (any MCP-compatible agent)
 
 ### Work Items
@@ -232,7 +280,7 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 - Errors provide actionable feedback to agents
 - Works with multiple MCP client implementations
 
-## Phase 9: Production Deployment
+## Phase 10: Production Deployment
 **Goal:** Production-ready deployment
 
 ### Work Items
@@ -254,19 +302,20 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 1. ✅ ~~Implement core AD API services (operation mode, routing)~~ COMPLETED
 2. ✅ ~~Add vehicle control command interfaces~~ COMPLETED
 3. ✅ ~~Create integration tests for AD API~~ COMPLETED
-4. Test AD API with real Autoware instance (when available)
+4. Implement core launch session management infrastructure
+5. Create PID/PGID tracking system
 
 ### Short-term (Week 3-4)
-1. Implement MRM fail-safe integration
-2. Add real-time diagnostics streaming
-3. Create mission planning interfaces
-4. Improve error handling and recovery
+1. Implement `start_launch` and `stop_launch` tools
+2. Add process cleanup and orphan detection
+3. Create session monitoring and logging
+4. Implement crash recovery mechanisms
 
 ### Medium-term (Month 2)
-1. Add data recording and replay
-2. Implement safety validation
-3. Create AI agent optimizations (MCP client agnostic)
-4. Develop workflow templates for common scenarios
+1. Add advanced launch operations (pause/resume/restart)
+2. Implement launch file generation tools
+3. Create AI-friendly development workflow tools
+4. Add comprehensive testing for launch management
 
 ## Testing Strategy
 
@@ -349,8 +398,9 @@ This roadmap outlines the development approach for the Autoware Model Context Pr
 
 ## Next Immediate Actions
 
-1. **Complete AD API Implementation** - Implement remaining service calls
-2. **Enhance Error Handling** - Add comprehensive error recovery
-3. **Create Integration Tests** - Validate AD API functionality
-4. **Update Documentation** - Document new APIs and workflows
-5. **Performance Optimization** - Profile and optimize bottlenecks
+1. **Start Launch Session Management** - Implement Phase 4 core infrastructure
+2. **Create PID/PGID Tracking** - Build persistent process tracking system
+3. **Implement Basic Launch Tools** - Add start_launch and stop_launch
+4. **Add Cleanup Mechanisms** - Ensure no orphaned processes
+5. **Update Documentation** - Document launch management architecture
+6. **Create Launch Tests** - Test process lifecycle management

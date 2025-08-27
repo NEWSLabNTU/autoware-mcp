@@ -1,0 +1,5 @@
+[book]
+authors = ["aeon"]
+language = "en"
+src = "src"
+title = "Autoware MCP Server Developer Guide"
