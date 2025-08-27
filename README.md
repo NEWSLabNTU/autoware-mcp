@@ -34,8 +34,11 @@ The Autoware MCP Server provides a universal bridge between ANY AI agent (Claude
 git clone https://github.com/your-org/autoware-mcp.git
 cd autoware-mcp
 
-# Install dependencies
-pip install -r requirements.txt
+# Install uv (Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies with uv
+uv sync --all-extras --dev
 
 # Setup Autoware (if not already installed)
 # See: https://autowarefoundation.github.io/autoware-documentation/main/installation/
