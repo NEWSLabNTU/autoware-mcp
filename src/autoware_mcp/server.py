@@ -26,6 +26,7 @@ from .ad_api_ros2 import (
     MRMRequest,
     MRMResponse,
 )
+from .tools.launch_tools import LaunchTools
 
 # Initialize FastMCP server
 mcp = FastMCP("Autoware MCP Server")
@@ -42,6 +43,7 @@ logger = setup_logging(
 ros2_manager = get_ros2_manager()
 monitor = get_monitor()
 ad_api = get_ad_api()
+launch_tools = LaunchTools(ros2_manager)
 
 
 # Pydantic models for API
@@ -426,8 +428,12 @@ async def verify_ros2_environment() -> Dict[str, Any]:
 # Operation Mode Management
 @mcp.tool()
 async def set_operation_mode(
-    mode: str = Field(..., description="Operation mode: stop, autonomous, local, or remote"),
-    transition_time: float = Field(default=10.0, description="Maximum time to wait for transition (seconds)")
+    mode: str = Field(
+        ..., description="Operation mode: stop, autonomous, local, or remote"
+    ),
+    transition_time: float = Field(
+        default=10.0, description="Maximum time to wait for transition (seconds)"
+    ),
 ) -> OperationModeResponse:
     """
     Change vehicle operation mode.
@@ -480,9 +486,13 @@ async def monitor_operation_mode() -> Dict[str, Any]:
 # Routing and Navigation
 @mcp.tool()
 async def set_route(
-    goal_pose: Dict[str, Any] = Field(..., description="Goal pose with position and orientation"),
-    waypoints: Optional[List[Dict[str, Any]]] = Field(default=None, description="Optional waypoints"),
-    option: Optional[Dict[str, Any]] = Field(default=None, description="Route options")
+    goal_pose: Dict[str, Any] = Field(
+        ..., description="Goal pose with position and orientation"
+    ),
+    waypoints: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Optional waypoints"
+    ),
+    option: Optional[Dict[str, Any]] = Field(default=None, description="Route options"),
 ) -> RouteResponse:
     """
     Set a route to a goal pose.
@@ -537,8 +547,12 @@ async def get_current_route() -> Dict[str, Any]:
 # Localization
 @mcp.tool()
 async def initialize_localization(
-    pose: Dict[str, Any] = Field(..., description="Initial pose with position and orientation"),
-    pose_with_covariance: Optional[List[float]] = Field(default=None, description="Pose covariance matrix")
+    pose: Dict[str, Any] = Field(
+        ..., description="Initial pose with position and orientation"
+    ),
+    pose_with_covariance: Optional[List[float]] = Field(
+        default=None, description="Pose covariance matrix"
+    ),
 ) -> LocalizationResponse:
     """
     Initialize localization with a pose.
@@ -570,7 +584,7 @@ async def monitor_localization_state() -> Dict[str, Any]:
 @mcp.tool()
 async def request_mrm(
     behavior: str = Field(..., description="MRM behavior type"),
-    reason: Optional[str] = Field(default=None, description="Reason for MRM request")
+    reason: Optional[str] = Field(default=None, description="Reason for MRM request"),
 ) -> MRMResponse:
     """
     Request a Minimum Risk Maneuver (MRM).
@@ -870,6 +884,10 @@ async def _shutdown_server() -> Dict[str, str]:
     logger.info("Shutting down MCP server")
 
     try:
+        # Cleanup launch sessions first
+        logger.info("Cleaning up active launch sessions")
+        # The cleanup manager handles this via atexit, but we'll ensure it's done
+
         # Cleanup AD API resources
         await cleanup_ad_api()
 
@@ -882,6 +900,346 @@ async def _shutdown_server() -> Dict[str, str]:
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
         return {"status": "error", "message": str(e)}
+
+
+# Launch Session Management Tools
+
+
+@mcp.tool()
+async def start_launch(
+    launch_file: str = Field(..., description="Path to the ROS2 launch file"),
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Launch parameters"),
+    launch_args: Optional[List[str]] = Field(
+        None, description="Command line arguments"
+    ),
+) -> Dict[str, Any]:
+    """
+    Start a ROS2 launch file and track the session.
+
+    Creates a new launch session with PID/PGID tracking for proper cleanup.
+    Sessions persist across MCP reconnections.
+
+    Args:
+        launch_file: Path to the launch file
+        parameters: Optional parameters to pass to launch
+        launch_args: Optional command line arguments
+
+    Returns:
+        Session information including ID, PID, PGID, and status
+    """
+    logger.info(f"Starting launch file: {launch_file}")
+    return await launch_tools.start_launch(launch_file, parameters, launch_args)
+
+
+@mcp.tool()
+async def stop_launch(
+    session_id: str = Field(..., description="Session ID to stop"),
+    force: bool = Field(False, description="Force kill if true"),
+    timeout: float = Field(10.0, description="Graceful shutdown timeout in seconds"),
+) -> Dict[str, Any]:
+    """
+    Stop a launch session gracefully or forcefully.
+
+    Sends SIGTERM to process group, waits for timeout, then SIGKILL if needed.
+
+    Args:
+        session_id: Session ID to stop
+        force: If True, use SIGKILL immediately
+        timeout: Timeout for graceful shutdown
+
+    Returns:
+        Status of the stop operation
+    """
+    logger.info(f"Stopping launch session: {session_id}")
+    return await launch_tools.stop_launch(session_id, force, timeout)
+
+
+@mcp.tool()
+async def list_launch_sessions() -> List[Dict[str, Any]]:
+    """
+    List all launch sessions with their current status.
+
+    Returns comprehensive information about all tracked launch sessions.
+
+    Returns:
+        List of session information dictionaries
+    """
+    logger.info("Listing all launch sessions")
+    return await launch_tools.list_launch_sessions()
+
+
+@mcp.tool()
+async def get_session_status(
+    session_id: str = Field(..., description="Session ID to query"),
+) -> Dict[str, Any]:
+    """
+    Get detailed status of a specific launch session.
+
+    Args:
+        session_id: Session ID to query
+
+    Returns:
+        Detailed session status including PID/PGID, state, nodes
+    """
+    logger.info(f"Getting status for session: {session_id}")
+    return await launch_tools.get_session_status(session_id)
+
+
+@mcp.tool()
+async def pause_launch(
+    session_id: str = Field(..., description="Session ID to pause"),
+) -> Dict[str, Any]:
+    """
+    Pause a running launch session using SIGSTOP.
+
+    Suspends all processes in the session's process group.
+
+    Args:
+        session_id: Session ID to pause
+
+    Returns:
+        Status of the pause operation
+    """
+    logger.info(f"Pausing launch session: {session_id}")
+    return await launch_tools.pause_launch(session_id)
+
+
+@mcp.tool()
+async def resume_launch(
+    session_id: str = Field(..., description="Session ID to resume"),
+) -> Dict[str, Any]:
+    """
+    Resume a paused launch session using SIGCONT.
+
+    Continues all processes in the session's process group.
+
+    Args:
+        session_id: Session ID to resume
+
+    Returns:
+        Status of the resume operation
+    """
+    logger.info(f"Resuming launch session: {session_id}")
+    return await launch_tools.resume_launch(session_id)
+
+
+@mcp.tool()
+async def restart_launch(
+    session_id: str = Field(..., description="Session ID to restart"),
+) -> Dict[str, Any]:
+    """
+    Restart a launch session (stop and start with same config).
+
+    Creates a new session with the same launch file and parameters.
+
+    Args:
+        session_id: Session ID to restart
+
+    Returns:
+        Status with old and new session IDs
+    """
+    logger.info(f"Restarting launch session: {session_id}")
+    return await launch_tools.restart_launch(session_id)
+
+
+@mcp.tool()
+async def get_session_logs(
+    session_id: str = Field(..., description="Session ID"),
+    lines: int = Field(100, description="Number of lines to retrieve"),
+    stream: str = Field("stdout", description="Log stream (stdout or stderr)"),
+) -> Dict[str, Any]:
+    """
+    Get buffered logs from a launch session.
+
+    Retrieves the last N lines from session log files.
+
+    Args:
+        session_id: Session ID
+        lines: Number of lines to retrieve
+        stream: Log stream to read (stdout or stderr)
+
+    Returns:
+        Log content and metadata
+    """
+    logger.info(f"Getting logs for session: {session_id}")
+    return await launch_tools.get_session_logs(session_id, lines, stream)
+
+
+@mcp.tool()
+async def cleanup_orphans() -> Dict[str, Any]:
+    """
+    Clean up orphaned processes from stale MCP instances.
+
+    Scans for sessions from dead MCP servers and terminates them.
+    Ensures no zombie processes remain after MCP crashes.
+
+    Returns:
+        Information about cleaned up sessions
+    """
+    logger.info("Cleaning up orphaned launch sessions")
+    return await launch_tools.cleanup_orphans()
+
+
+# Launch Generation Tools
+
+
+@mcp.tool()
+async def generate_launch_file(
+    name: str = Field(..., description="Name for the launch file"),
+    components: List[str] = Field(..., description="List of components/nodes"),
+    template: Optional[str] = Field(None, description="Template to use"),
+    includes: Optional[List[str]] = Field(None, description="Launch files to include"),
+    remappings: Optional[Dict[str, str]] = Field(None, description="Topic remappings"),
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameters"),
+) -> Dict[str, Any]:
+    """
+    Generate a ROS2 launch file for AI development.
+
+    Creates launch files in .autoware-mcp/generated/launches/ with versioning.
+    Templates available: perception_pipeline, planning_pipeline, control_pipeline
+
+    Args:
+        name: Name for the launch file (without extension)
+        components: List of components/nodes to include
+        template: Optional template name
+        includes: Other launch files to include
+        remappings: Topic remappings
+        parameters: Parameters to set
+
+    Returns:
+        Path to generated launch file and metadata
+    """
+    logger.info(f"Generating launch file: {name}")
+    return await launch_tools.generate_launch_file(
+        name, components, template, includes, remappings, parameters
+    )
+
+
+@mcp.tool()
+async def validate_launch_file(
+    file_path: str = Field(..., description="Path to launch file"),
+) -> Dict[str, Any]:
+    """
+    Validate launch file syntax and structure.
+
+    Checks Python syntax and required functions.
+
+    Args:
+        file_path: Path to launch file to validate
+
+    Returns:
+        Validation results with success status and any errors
+    """
+    logger.info(f"Validating launch file: {file_path}")
+    return await launch_tools.validate_launch_file(file_path)
+
+
+@mcp.tool()
+async def generate_node_config(
+    node_name: str = Field(..., description="Name of the node"),
+    parameters: Dict[str, Any] = Field(..., description="Parameters to configure"),
+    format: str = Field("yaml", description="Config format (yaml or json)"),
+) -> Dict[str, Any]:
+    """
+    Generate configuration file for a ROS2 node.
+
+    Creates config files in .autoware-mcp/generated/configs/ with versioning.
+
+    Args:
+        node_name: Name of the node
+        parameters: Parameters to configure
+        format: Config format (yaml or json)
+
+    Returns:
+        Path to generated config file
+    """
+    logger.info(f"Generating config for node: {node_name}")
+    return await launch_tools.generate_node_config(node_name, parameters, format)
+
+
+@mcp.tool()
+async def generate_custom_node(
+    name: str = Field(..., description="Name of the node"),
+    language: str = Field("python", description="Programming language (python or cpp)"),
+    node_type: str = Field(
+        "basic", description="Type of node (basic, service, action)"
+    ),
+    interfaces: Optional[List[str]] = Field(
+        None, description="Topics/services to interface with"
+    ),
+) -> Dict[str, Any]:
+    """
+    Generate a custom ROS2 node template.
+
+    Creates node files in .autoware-mcp/generated/nodes/ with versioning.
+
+    Args:
+        name: Name of the node
+        language: Programming language (python or cpp)
+        node_type: Type of node (basic, service, action)
+        interfaces: List of topics/services to interface with
+
+    Returns:
+        Path to generated node file
+    """
+    logger.info(f"Generating custom node: {name}")
+    return await launch_tools.generate_custom_node(
+        name, language, node_type, interfaces
+    )
+
+
+@mcp.tool()
+async def test_launch_file(
+    file_path: str = Field(..., description="Path to launch file"),
+    dry_run: bool = Field(True, description="Only validate without starting"),
+) -> Dict[str, Any]:
+    """
+    Test a launch file without fully starting nodes (dry-run).
+
+    Validates syntax and optionally attempts to start/stop.
+
+    Args:
+        file_path: Path to launch file to test
+        dry_run: If True, only validate without starting
+
+    Returns:
+        Test results with any errors or warnings
+    """
+    logger.info(f"Testing launch file: {file_path}")
+    return await launch_tools.test_launch_file(file_path, dry_run)
+
+
+@mcp.tool()
+async def get_launch_errors(
+    session_id: str = Field(..., description="Session ID"),
+) -> Dict[str, Any]:
+    """
+    Get error diagnostics from a launch session.
+
+    Retrieves error messages and stderr logs.
+
+    Args:
+        session_id: Session ID to get errors from
+
+    Returns:
+        Error information and diagnostics
+    """
+    logger.info(f"Getting errors for session: {session_id}")
+    return await launch_tools.get_launch_errors(session_id)
+
+
+@mcp.tool()
+async def list_generated_files() -> Dict[str, List[str]]:
+    """
+    List all AI-generated files in the project.
+
+    Shows generated launches, nodes, and configs.
+
+    Returns:
+        Dictionary of generated files by category
+    """
+    logger.info("Listing generated files")
+    return await launch_tools.list_generated_files()
 
 
 # Main entry point

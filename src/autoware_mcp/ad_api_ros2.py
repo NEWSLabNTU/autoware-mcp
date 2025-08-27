@@ -285,6 +285,10 @@ class AutowareADAPIROS2:
                 timeout=5,
             )
 
+            if result.returncode != 0:
+                logger.error(f"Failed to publish to {topic_name}: {result.stderr}")
+                logger.debug(f"Command output: {result.stdout}")
+
             return result.returncode == 0
 
         except Exception as e:
@@ -632,6 +636,9 @@ class AutowareADAPIROS2:
             "pose": {"pose": pose, "covariance": covariance},
         }
 
+        # Log the message being published for debugging
+        logger.debug(f"Publishing pose message: {pose_msg}")
+
         # Publish to both topics for maximum compatibility
         # /initialpose is used by RViz 2D Pose Estimate tool and planning simulator
         # /initialpose3d is for 3D pose initialization
@@ -650,8 +657,14 @@ class AutowareADAPIROS2:
         # Also try the AD API service if available
         try:
             request = {
-                "pose_with_covariance": [
-                    {"pose": {"pose": pose, "covariance": covariance}}
+                "pose": [
+                    {
+                        "header": {
+                            "frame_id": "map",
+                            "stamp": {"sec": 0, "nanosec": 0},
+                        },
+                        "pose": {"pose": pose, "covariance": covariance},
+                    }
                 ]
             }
 
@@ -664,6 +677,11 @@ class AutowareADAPIROS2:
             logger.warning(f"AD API localization service not available: {e}")
             result3 = {"success": False}
 
+        # Check results
+        logger.info(f"Publish to /initialpose: {result1}")
+        logger.info(f"Publish to /initialpose3d: {result2}")
+        logger.info(f"AD API service result: {result3.get('success', False)}")
+
         success = result1 or result2 or result3.get("success", False)
 
         return LocalizationResponse(
@@ -671,7 +689,7 @@ class AutowareADAPIROS2:
             message=(
                 "Localization pose published to initialpose topics"
                 if success
-                else "Failed to initialize localization"
+                else "Failed to initialize localization - check logs for details"
             ),
             initialization_state=("initialized" if success else "uninitialized"),
         )
