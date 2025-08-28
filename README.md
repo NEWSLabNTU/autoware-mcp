@@ -6,7 +6,7 @@
 
 The Autoware MCP Server provides a universal bridge between ANY AI agent (Claude, GPT, Gemini, or custom agents) and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making for autonomous vehicles.
 
-[![Autonomous Driving Demo](media/2025-08-28_planning-simulation.png)](media/2025-08-28_planning-simulation.mp4)
+[![Autonomous Driving Demo](media/2025-08-28_planning-simulation.png)](https://youtu.be/ZFEZ7mw8dLI)
 
 *Click the image above to watch the full autonomous driving demo*
 
