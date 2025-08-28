@@ -67,6 +67,28 @@ autoware-mcp/
 
 ## Critical Findings and Solutions
 
+### IMPORTANT: Localization Initialization Issue (2025-08-28)
+**Issue**: Localization may not properly initialize even after publishing to /initialpose
+
+**Root Cause**: The localization service requires proper initialization through /api/localization/initialize service, not just topic publishing
+
+**Solutions**:
+1. Always verify localization state after initialization:
+```python
+# After publishing initial pose
+await asyncio.sleep(5)
+loc_state = await client.monitor_localization_state()
+if not loc_state['localized']:
+    # Re-initialize or troubleshoot
+```
+
+2. Check vehicle position to verify localization took effect:
+```bash
+ros2 topic echo /localization/kinematic_state --once | grep -A4 "position:"
+```
+
+3. Route planning will fail if localization is not properly initialized - always verify before setting route
+
 ### 1. Route Setting Service Requirements
 **Issue**: The SetRoute service was failing with "The planned route is empty"
 
@@ -149,11 +171,48 @@ mcp__autoware__call_ros2_service(
 
 ## Simulation Management
 
-### Starting Planning Simulation
+### Starting Planning Simulation with MCP Launch Tools (Recommended)
+```python
+# Create launch file for planning simulation
+with open("planning_simulation_mcp.launch.py", "w") as f:
+    f.write('''#!/usr/bin/env python3
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
+from ament_index_python.packages import get_package_share_directory
+import os
+
+def generate_launch_description():
+    autoware_launch_dir = get_package_share_directory('autoware_launch')
+    return LaunchDescription([
+        IncludeLaunchDescription(
+            AnyLaunchDescriptionSource([
+                PathJoinSubstitution([autoware_launch_dir, 'launch', 'planning_simulator.launch.xml'])
+            ]),
+            launch_arguments={
+                'map_path': os.environ.get('MAP_PATH', os.path.expanduser("~/autoware_map/sample-map-planning")),
+                'vehicle_model': os.environ.get('VEHICLE_MODEL', 'sample_vehicle'),
+                'sensor_model': os.environ.get('SENSOR_MODEL', 'sample_sensor_kit'),
+            }.items()
+        )
+    ])
+''')
+
+# Start using MCP tools
+result = await client.start_launch("planning_simulation_mcp.launch.py")
+session_id = result["session_id"]
+
+# Monitor and stop
+status = await client.get_session_status(session_id)
+await client.stop_launch(session_id)
+```
+
+### Starting Planning Simulation (Shell Script)
 ```bash
-./run_planning_simulation.sh start  # Start and wait for ready
-./run_planning_simulation.sh stop   # Clean shutdown
-./run_planning_simulation.sh status # Check if running
+./scripts/run_planning_simulation.sh start  # Start and wait for ready
+./scripts/run_planning_simulation.sh stop   # Clean shutdown
+./scripts/run_planning_simulation.sh status # Check if running
 ```
 
 **Startup Phases**:
@@ -323,7 +382,10 @@ export RMW_IMPLEMENTATION=<your_rmw_implementation>
 export MAP_PATH="$HOME/autoware_map/sample-map-planning"
 export VEHICLE_MODEL="sample_vehicle"
 export SENSOR_MODEL="sample_sensor_kit"
-export DISPLAY=":1"  # For headless environments
+export DISPLAY=":1"  # For headless environments - CRITICAL for RViz and simulation
+
+# IMPORTANT: Set DISPLAY before starting MCP server in Claude Code
+# In Claude Code settings, add DISPLAY=":1" to environment variables
 ```
 
 ## Development Workflow
@@ -410,10 +472,16 @@ ros2 service call /api/routing/clear_route  # Clear route
 5. **Capture RViz goals** - Use `/planning/mission_planning/echo_back_goal_pose` to get clicked goals
 
 ---
-*Last Updated: 2025-01-27*
+*Last Updated: 2025-08-28*
 *Status: PHASE 4 COMPLETE - Launch session management fully implemented*
 
 ### Recent Updates
+- **2025-08-28**: Important updates added:
+  - Localization initialization troubleshooting 
+  - MCP launch tools for planning simulation
+  - Critical DISPLAY environment variable requirement
+  - Migration to uv package manager completed
+
 - **2025-01-27**: Phase 4 Launch Session Management completed
   - Full PID/PGID tracking prevents orphaned processes
   - AI-friendly launch file generation with versioning
