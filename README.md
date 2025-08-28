@@ -4,18 +4,20 @@
 [![ROS2](https://img.shields.io/badge/ROS2-Humble-green.svg)](https://docs.ros.org/en/humble/)
 [![Autoware](https://img.shields.io/badge/Autoware-0.45.1-orange.svg)](https://autoware.org/)
 
-## Overview
-
 The Autoware MCP Server provides a universal bridge between ANY AI agent (Claude, GPT, Gemini, or custom agents) and the Autoware autonomous driving stack through the Model Context Protocol (MCP). This enables AI-driven mission planning, real-time vehicle control, and adaptive decision-making for autonomous vehicles.
+
+[![Autonomous Driving Demo](media/2025-08-28_planning-simulation.png)](media/2025-08-28_planning-simulation.mp4)
+
+*Click the image above to watch the full autonomous driving demo*
 
 ### Key Features
 
-- 🤖 **Universal AI Support**: Works with any MCP-compatible AI agent (Claude, GPT, Gemini, etc.)
-- 🚗 **Full Vehicle Control**: Complete control over Autoware's autonomous driving features
-- 📊 **Real-Time Monitoring**: Concurrent monitoring of perception, planning, and vehicle state
-- 🛡️ **Multi-Layer Safety**: Comprehensive safety validation at every level
-- 🔄 **Adaptive Behavior**: Dynamic adjustment based on real-time conditions
-- 🎯 **Mission Execution**: Support for complex multi-step missions with waypoints
+- **Universal AI Support**: Works with any MCP-compatible AI agent (Claude, GPT, Gemini, etc.)
+- **Full Vehicle Control**: Complete control over Autoware's autonomous driving features
+- **Real-Time Monitoring**: Concurrent monitoring of perception, planning, and vehicle state
+- **Launch Management**: Start, stop, and manage ROS2 launch sessions
+- **Safety Systems**: Comprehensive safety validation at every level
+- **Mission Execution**: Support for complex multi-step missions with waypoints
 
 ## Quick Start
 
@@ -25,7 +27,6 @@ The Autoware MCP Server provides a universal bridge between ANY AI agent (Claude
 - ROS2 Humble
 - Python 3.10+
 - Autoware 0.45.1
-- Docker (optional)
 
 ### Installation
 
@@ -39,129 +40,98 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dependencies with uv
 uv sync --all-extras --dev
-
-# Setup Autoware (if not already installed)
-# See: https://autowarefoundation.github.io/autoware-documentation/main/installation/
 ```
 
 ### Basic Usage
 
-1. **Start Autoware**:
+1. **Start the MCP Server**:
 ```bash
-cd ~/autoware
-source install/setup.bash
-ros2 launch autoware_launch autoware.launch.xml \
-  map_path:=/path/to/map \
-  vehicle_model:=sample_vehicle \
-  sensor_model:=sample_sensor_kit
+# Source your ROS2/Autoware workspace
+source ~/autoware/install/setup.bash
+
+# Start the MCP server
+uv run autoware-mcp
 ```
 
-2. **Start MCP Server**:
-```bash
-cd autoware-mcp
-python -m autoware_mcp.server --config config/default.yaml
+2. **Connect with Claude Code**:
+Add to your Claude Code configuration file (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "autoware": {
+      "command": "uv",
+      "args": ["run", "autoware-mcp"],
+      "env": {
+        "ROS_DOMAIN_ID": "your_domain_id"
+      }
+    }
+  }
+}
 ```
 
-3. **Connect Your AI Agent**:
+3. **Example Prompts for AI Agents**:
 
-The MCP server works with ANY MCP-compatible client:
+Since AI agents may not have specific knowledge about autonomous driving, use clear, step-by-step prompts:
 
-- **Claude Desktop/Code**: Add server to MCP settings
-- **OpenAI GPT**: Use MCP adapter libraries
-- **Google Gemini**: Via MCP client SDK
-- **Custom Agents**: Any MCP protocol implementation
-
-Example with generic MCP client:
-```python
-from mcp import Client
-
-# Connect to MCP server
-client = Client("ws://localhost:8080")
-
-# Plan and execute a route
-await client.call_tool("plan_route", {
-    "destination": {"x": 100.0, "y": 50.0, "z": 0.0},
-    "constraints": {"avoid_highways": False}
-})
-
-# Set autonomous mode
-await client.call_tool("set_operation_mode", {"mode": "autonomous"})
+**To launch a planning simulation:**
+```
+Please launch a planning simulation for Autoware using the MCP tools. 
+Use the start_launch tool with the planning_simulation_mcp.launch.py file.
 ```
 
-## Architecture
-
-The system consists of three main layers:
-
+**To run an autonomous driving sequence:**
 ```
-AI Agent Layer (Any MCP Client)
-    ↓ MCP Protocol
-MCP Server (Universal Bridge)
-    ↓ ROS2/AD API
-Autoware Stack (Autonomous Driving)
+Please run the complete autonomous driving sequence:
+1. Initialize the vehicle's localization at the starting position
+2. Clear any existing route and set a new route to the goal position
+3. Change the operation mode to autonomous
+4. Monitor the vehicle's progress until it reaches the destination
+5. Stop the simulation when complete
 ```
 
-For detailed architecture documentation, see [docs/01-architecture.md](docs/01-architecture.md).
+**To monitor vehicle state:**
+```
+Please check the current vehicle state including position, speed, and route status
+using the get_vehicle_state and get_current_route MCP tools.
+```
 
 ## Available MCP Tools
 
-### Mission Planning
-- `plan_route` - Plan routes with waypoints and constraints
-- `execute_mission` - Execute complex multi-step missions
+### System Management
+- `health_check` - Get complete system health status
+- `check_autoware_status` - Check running Autoware components
+- `verify_ros2_environment` - Verify ROS2 setup
+
+### Launch Management
+- `start_launch` - Start ROS2 launch files
+- `stop_launch` - Stop launch sessions
+- `list_launch_sessions` - View active sessions
+- `get_session_status` - Get detailed session information
 
 ### Vehicle Control
-- `set_operation_mode` - Change between stop/autonomous/manual modes
-- `control_vehicle` - Direct velocity and steering control
-- `emergency_stop` - Immediate vehicle stop
+- `set_operation_mode` - Change between stop/autonomous/local/remote modes
+- `initialize_localization` - Set initial vehicle pose
+- `set_route` - Set route to destination
+- `set_route_points` - Set route with waypoints
+- `get_current_route` - Get current route status
 
-### Monitoring
-- `monitor_perception` - Real-time object detection stream
-- `get_vehicle_state` - Current vehicle position and status
-- `analyze_scene` - Scene understanding and analysis
+### Vehicle Monitoring
+- `get_vehicle_state` - Get vehicle position, speed, and kinematics
+- `monitor_operation_mode` - Monitor current operation mode
+- `monitor_localization_state` - Check localization status
+- `monitor_motion_state` - Monitor motion readiness
 
-### Planning
-- `evaluate_trajectory` - Safety evaluation of planned path
-- `request_replan` - Dynamic trajectory adjustment
-
-For complete API documentation, see [docs/03-api-specification.md](docs/03-api-specification.md).
-
-## Example Applications
-
-### Urban Navigation
-```python
-# Plan a route through the city with multiple stops
-mission = await client.call_tool("execute_mission", {
-    "mission_id": "delivery_route",
-    "steps": [
-        {"action": "navigate_to", "parameters": {"location": "pickup_point"}},
-        {"action": "wait", "parameters": {"duration": 30}},
-        {"action": "navigate_to", "parameters": {"location": "delivery_point"}}
-    ],
-    "monitoring": ["pedestrian_detection", "traffic_monitoring"]
-})
-```
-
-### Highway Driving
-```python
-# Monitor and adapt to highway traffic
-monitor = await client.call_tool("monitor_perception", {
-    "stream_id": "highway_monitor",
-    "filters": {"object_types": ["vehicle"], "distance_threshold": 100},
-    "frequency_hz": 20
-})
-
-# React to traffic conditions
-async for update in monitor:
-    if update.congestion_level > 0.7:
-        await client.call_tool("request_replan", {"reason": "traffic"})
-```
+### ROS2 Interface
+- `list_ros2_nodes` - List all active ROS2 nodes
+- `list_ros2_topics` - List all ROS2 topics
+- `list_ros2_services` - List all ROS2 services
+- `call_ros2_service` - Call any ROS2 service
+- `publish_to_topic` - Publish to any ROS2 topic
+- `echo_topic_messages` - Capture messages from topics
 
 ## Documentation
 
-- [Architecture Overview](docs/01-architecture.md) - System design and framework choices
-- [Component Design](docs/02-components.md) - Detailed component specifications
-- [API Specification](docs/03-api-specification.md) - Complete API and message formats
-- [Monitoring & Safety](docs/04-monitoring-safety.md) - Safety systems and monitoring
-- [Development Guide](docs/05-development-guide.md) - Building, testing, and deployment
+For comprehensive documentation, please refer to the [Developer Guide](book/)
 
 ## Configuration
 
@@ -206,7 +176,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## Safety Notice
 
-⚠️ **WARNING**: This system is designed for research and development purposes. Always ensure:
+**WARNING**: This system is designed for research and development purposes. Always ensure:
 - A safety driver is present during real vehicle testing
 - Emergency stop mechanisms are properly configured
 - All safety validations are enabled
