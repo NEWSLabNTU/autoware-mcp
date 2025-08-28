@@ -9,6 +9,7 @@ import yaml
 import sys
 import subprocess
 import json
+import time
 from pathlib import Path
 
 
@@ -110,9 +111,29 @@ pose:
                 f"✓ Localization initialized at position: "
                 f"x={pose['position']['x']:.1f}, y={pose['position']['y']:.1f}"
             )
+
+            # Wait and verify localization state
+            time.sleep(3)
+            if self.check_localization_state():
+                print("✓ Localization verified as initialized")
+            else:
+                print("⚠ Localization sent but not yet verified - may need more time")
             return True
 
         print("✗ Failed to initialize localization")
+        return False
+
+    def check_localization_state(self):
+        """Check if localization is initialized."""
+        cmd = "ros2 topic echo /api/localization/initialization_state --once"
+        try:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=3
+            )
+            if result.returncode == 0 and "state: 2" in result.stdout:
+                return True
+        except:
+            pass
         return False
 
     def clear_route(self):

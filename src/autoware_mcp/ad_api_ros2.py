@@ -1,5 +1,6 @@
 """Autoware AD API integration using ROS2 topics and services."""
 
+import asyncio
 import json
 import subprocess
 from typing import Dict, Any, Optional, List
@@ -83,6 +84,9 @@ class LocalizationResponse(BaseModel):
     success: bool
     message: str
     initialization_state: str
+    localized: Optional[bool] = Field(
+        default=None, description="Whether localization is confirmed"
+    )
 
 
 class MRMRequest(BaseModel):
@@ -654,8 +658,9 @@ class AutowareADAPIROS2:
             pose_msg,
         )
 
-        # Also try the AD API service if available
+        # Also try the AD API service if available (corrected service call)
         try:
+            # The InitializeLocalization service expects an array of poses
             request = {
                 "pose": [
                     {
@@ -668,11 +673,19 @@ class AutowareADAPIROS2:
                 ]
             }
 
+            # Try the correct service endpoint
             result3 = await self._call_service(
                 "/api/localization/initialize",
                 "autoware_adapi_v1_msgs/srv/InitializeLocalization",
                 request,
             )
+
+            # If successful, wait for localization to stabilize
+            if result3.get("success"):
+                logger.info(
+                    "Localization service called successfully, waiting for initialization..."
+                )
+                await asyncio.sleep(2)  # Give localization time to process
         except Exception as e:
             logger.warning(f"AD API localization service not available: {e}")
             result3 = {"success": False}
@@ -684,14 +697,34 @@ class AutowareADAPIROS2:
 
         success = result1 or result2 or result3.get("success", False)
 
+        # If successful, verify localization state after a delay
+        if success:
+            await asyncio.sleep(3)  # Wait for localization to process
+            loc_state = await self.get_localization_state()
+            if loc_state.get("localized"):
+                logger.info("Localization successfully initialized and verified")
+                return LocalizationResponse(
+                    success=True,
+                    message="Localization initialized and verified",
+                    initialization_state="initialized",
+                    localized=True,
+                )
+            else:
+                logger.warning(
+                    "Localization initialized but not yet verified as localized"
+                )
+                return LocalizationResponse(
+                    success=True,
+                    message="Localization initialized, waiting for stabilization",
+                    initialization_state="initializing",
+                    localized=False,
+                )
+
         return LocalizationResponse(
-            success=success,
-            message=(
-                "Localization pose published to initialpose topics"
-                if success
-                else "Failed to initialize localization - check logs for details"
-            ),
-            initialization_state=("initialized" if success else "uninitialized"),
+            success=False,
+            message="Failed to initialize localization - check logs for details",
+            initialization_state="uninitialized",
+            localized=False,
         )
 
     async def get_localization_state(self) -> Dict[str, Any]:
