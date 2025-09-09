@@ -27,6 +27,7 @@ from .ad_api_ros2 import (
     MRMResponse,
 )
 from .tools.launch_tools import LaunchTools
+from .tools.perception_tools import PerceptionTools
 
 # Initialize FastMCP server
 mcp = FastMCP("Autoware MCP Server")
@@ -44,6 +45,7 @@ ros2_manager = get_ros2_manager()
 monitor = get_monitor()
 ad_api = get_ad_api()
 launch_tools = LaunchTools(ros2_manager)
+perception_tools = PerceptionTools()
 
 
 # Pydantic models for API
@@ -465,7 +467,7 @@ async def set_operation_mode(
         return OperationModeResponse(
             success=False,
             current_mode="unknown",
-            requested_mode=mode,
+            requested_mode=str(mode),
             message=f"Unknown operation mode: {mode}",
             timestamp=datetime.now().isoformat(),
         )
@@ -852,6 +854,84 @@ async def get_vehicle_state() -> Dict[str, Any]:
     }
 
 
+# Perception Tools
+
+
+@mcp.tool()
+async def capture_camera_view(camera: str = "front") -> Dict[str, Any]:
+    """
+    Capture current camera view and save as image file. 
+    Returns path to image that can be viewed with Read tool.
+    
+    Args:
+        camera: Camera to capture from (front, rear, left, right, traffic_light)
+    
+    Returns:
+        Dictionary with image_path that can be read with Read tool
+    """
+    logger.info(f"Capturing camera view: {camera}")
+    return await perception_tools.capture_camera_view(camera)
+
+
+@mcp.tool()
+async def visualize_lidar_scene(view_type: str = "bev") -> Dict[str, Any]:
+    """
+    Create visualization of LiDAR pointcloud data. 
+    Returns image showing 3D scene from specified viewpoint.
+    
+    Args:
+        view_type: Visualization viewpoint (bev, front, side, rear)
+    
+    Returns:
+        Dictionary with visualization image path
+    """
+    logger.info(f"Visualizing LiDAR scene: {view_type}")
+    return await perception_tools.visualize_lidar_scene(view_type)
+
+
+@mcp.tool()
+async def get_perception_snapshot() -> Dict[str, Any]:
+    """
+    Get comprehensive perception snapshot with camera, LiDAR, 
+    and object detection overlays. Returns multiple images and object data.
+    
+    Returns:
+        Dictionary with multiple image paths and detection data
+    """
+    logger.info("Getting perception snapshot")
+    return await perception_tools.get_perception_snapshot()
+
+
+@mcp.tool()
+async def analyze_driving_scene() -> Dict[str, Any]:
+    """
+    Analyze complete driving scene with all sensors. 
+    Returns annotated images, detected objects, traffic lights, 
+    and driving recommendations for AI decision making.
+    
+    Returns:
+        Complete scene analysis with images, objects, and recommendations
+    """
+    logger.info("Analyzing driving scene")
+    return await perception_tools.analyze_driving_scene()
+
+
+@mcp.tool()
+async def get_detected_objects(object_type: str = "all") -> Dict[str, Any]:
+    """
+    Get list of currently detected objects (vehicles, pedestrians, etc.) 
+    with positions, velocities, and classifications.
+    
+    Args:
+        object_type: Filter by object type (all, vehicle, pedestrian, bicycle, motorcycle)
+    
+    Returns:
+        List of detected objects with properties
+    """
+    logger.info(f"Getting detected objects: {object_type}")
+    return await perception_tools.get_detected_objects(object_type)
+
+
 # Internal server functions
 async def _initialize_server() -> Dict[str, str]:
     """Internal function to initialize the MCP server."""
@@ -887,6 +967,9 @@ async def _shutdown_server() -> Dict[str, str]:
         # Cleanup launch sessions first
         logger.info("Cleaning up active launch sessions")
         # The cleanup manager handles this via atexit, but we'll ensure it's done
+
+        # Cleanup perception resources
+        perception_tools.cleanup()
 
         # Cleanup AD API resources
         await cleanup_ad_api()
