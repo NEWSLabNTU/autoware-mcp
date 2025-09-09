@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- Rosbag Replay Simulation Launch File (XML version)
+
+       This launch file:
+       1. Launches Autoware using logging_simulator.launch.xml with correct parameters
+       2. Simultaneously plays rosbag from ~/autoware_map/sample-rosbag/ at 0.2x speed
+       3. Uses standard ROS2 XML launch file structure
+
+       Usage:
+           ros2 launch rosbag_replay_simulation.launch.xml
+  -->
+
+  <!-- Launch arguments with default values -->
+  <arg name="map_path" default="$(env HOME)/autoware_map/sample-map-rosbag"
+       description="Path to the map directory for logging simulation"/>
+
+  <arg name="rosbag_path" default="$(env HOME)/autoware_map/sample-rosbag"
+       description="Path to the rosbag directory to replay"/>
+
+  <arg name="vehicle_model" default="sample_vehicle"
+       description="Vehicle model to use for simulation"/>
+
+  <arg name="sensor_model" default="sample_sensor_kit"
+       description="Sensor model to use for simulation"/>
+
+  <arg name="playback_rate" default="0.2"
+       description="Rosbag playback rate (0.2 = 20% of original speed)"/>
+
+  <!-- Include Autoware logging simulator launch -->
+  <include file="$(find-pkg-share autoware_launch)/launch/logging_simulator.launch.xml">
+    <arg name="map_path" value="$(var map_path)"/>
+    <arg name="vehicle_model" value="$(var vehicle_model)"/>
+    <arg name="sensor_model" value="$(var sensor_model)"/>
+  </include>
+
+  <!-- Launch rosbag play process with looping -->
+  <executable cmd="ros2 bag play $(var rosbag_path) --rate $(var playback_rate) --clock --loop"
+              name="rosbag_play"
+              output="screen"
+              cwd="$(var rosbag_path)"/>
+
+</launch>
