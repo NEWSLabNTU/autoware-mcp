@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from .test_helpers import check_autoware_status, get_vehicle_state
+from .helpers import check_autoware_status, get_vehicle_state
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from .test_helpers import set_route, set_route_points, get_current_route
+from .helpers import set_route, set_route_points, get_current_route
 from autoware_mcp.server import RouteRequest
 
 

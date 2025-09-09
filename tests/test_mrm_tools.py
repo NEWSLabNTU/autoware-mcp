@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from .test_helpers import request_mrm, list_mrm_behaviors, monitor_mrm_state
+from .helpers import request_mrm, list_mrm_behaviors, monitor_mrm_state
 from autoware_mcp.server import MRMRequest
 
 

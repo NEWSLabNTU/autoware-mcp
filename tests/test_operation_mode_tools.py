@@ -3,9 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from .test_helpers import set_operation_mode, monitor_operation_mode
-from autoware_mcp.server import OperationModeRequest
-from autoware_mcp.ad_api_ros2 import OperationMode
+from .helpers import set_operation_mode, monitor_operation_mode
 
 
 @pytest.mark.asyncio
@@ -24,8 +22,7 @@ async def test_set_operation_mode_to_autonomous():
             )
         )
 
-        request = OperationModeRequest(mode=OperationMode.AUTONOMOUS, transition_time=5)
-        result = await set_operation_mode(request)
+        result = await set_operation_mode(mode="autonomous", transition_time=5)
 
         assert result.success is True
         assert result.current_mode == "autonomous"
@@ -48,8 +45,7 @@ async def test_set_operation_mode_to_stop():
             )
         )
 
-        request = OperationModeRequest(mode=OperationMode.STOP)
-        result = await set_operation_mode(request)
+        result = await set_operation_mode(mode="stop", transition_time=10)
 
         assert result.success is True
         assert result.current_mode == "stop"

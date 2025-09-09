@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from .test_helpers import initialize_localization, monitor_localization_state
+from .helpers import initialize_localization, monitor_localization_state
 from autoware_mcp.server import LocalizationRequest
 
 
