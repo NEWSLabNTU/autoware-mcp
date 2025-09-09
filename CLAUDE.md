@@ -25,6 +25,7 @@ autoware-mcp/
 ├── src/autoware_mcp/
 │   ├── server.py           # Main MCP server implementation
 │   ├── ad_api_ros2.py      # Autoware AD API ROS2 interface
+│   ├── perception_bridge.py # Perception media bridge (NEW in Phase 5)
 │   ├── launch_manager/     # Launch session management (NEW in Phase 4)
 │   │   ├── session_manager.py  # Main session manager
 │   │   ├── session.py          # Session state tracking
@@ -32,15 +33,17 @@ autoware-mcp/
 │   │   ├── cleanup.py          # Cleanup and recovery
 │   │   └── generator.py        # Launch file generation
 │   └── tools/               # MCP tool implementations
+│       ├── perception_tools.py # Perception MCP tools (NEW in Phase 5)
 ├── examples/
 │   ├── poses_config.yaml   # Validated initial and goal poses
 │   ├── test_autonomous_drive_with_map.py  # Complete test example
 │   ├── launch_management_demo.py  # Launch management demo (NEW)
 │   └── run_planning_simulation.sh  # Simulation launcher script
 ├── tests/                   # Unit and integration tests
-├── docs/                    # Documentation
-│   ├── LAUNCH_SESSION_MANAGEMENT.md  # Launch management design
-│   └── roadmap.md          # Development roadmap
+├── book/                    # Documentation book (use mdbook build)
+│   └── src/
+│       └── architecture/
+│           └── perception-bridge.md  # Perception bridge design (NEW)
 └── pyproject.toml          # Rye project configuration
 ```
 
@@ -228,6 +231,63 @@ await client.stop_launch(session_id)
 - `/api/routing/state` - Route status
 - `/tf` and `/tf_static` - Transform tree
 
+## NEW: Phase 5 - Perception Media Bridge (Implemented 2025-08-28)
+
+### Overview
+Perception Media Bridge enables AI agents to access and analyze Autoware's perception data (camera images, LiDAR pointclouds, object detections) through MCP tools.
+
+### Key Features
+1. **Camera Image Capture**
+   - `capture_camera_view` - Capture images from any camera (front, rear, left, right, traffic_light)
+   - Saves images to `/tmp/autoware_mcp/perception/`
+   - Returns file paths that AI agents can read with the Read tool
+
+2. **LiDAR Visualization**
+   - `visualize_lidar_scene` - Create 2D visualizations of 3D pointcloud data
+   - Supports multiple view types (bird's eye view, front, side, rear)
+   - Converts pointcloud to images AI agents can analyze
+
+3. **Perception Snapshots**
+   - `get_perception_snapshot` - Get complete perception state
+   - Combines camera, LiDAR, and object detection data
+   - Returns multiple annotated images
+
+4. **Scene Analysis**
+   - `analyze_driving_scene` - Comprehensive scene understanding
+   - Returns images, detected objects, traffic lights, and recommendations
+   - Enables AI reasoning about driving scenarios
+
+5. **Object Detection**
+   - `get_detected_objects` - Get list of detected objects
+   - Filter by type (vehicle, pedestrian, bicycle, motorcycle)
+   - Returns positions, velocities, and classifications
+
+### Usage Example
+```python
+# Capture camera view
+result = await capture_camera_view("front")
+image_path = result["image_path"]
+# AI agent can then use Read tool to view the image
+
+# Get complete scene analysis
+scene = await analyze_driving_scene()
+# Returns:
+# - Multiple images (camera, lidar_bev, annotated)
+# - Detected objects with positions
+# - Traffic light states
+# - Driving recommendations
+
+# Get detected objects
+objects = await get_detected_objects("vehicle")
+# Returns list of vehicles with positions and velocities
+```
+
+### Technical Details
+- Images saved to `/tmp/autoware_mcp/perception/`
+- Automatic cleanup of old files (keeps last 100)
+- Placeholder images generated when actual sensor data unavailable
+- Future: Will integrate with cv_bridge for actual ROS2 image conversion
+
 ## NEW: Phase 4 - Launch Session Management (Implemented 2025-01-27)
 
 ### Overview
@@ -396,6 +456,12 @@ export DISPLAY=":1"  # For headless environments - CRITICAL for RViz and simulat
 3. Restart MCP connection in Claude Code: `/mcp` command
 4. Test changes immediately
 
+### IMPORTANT: MCP Server Connection
+- **DO NOT start the MCP server manually** (e.g., `uv run autoware-mcp`)
+- The MCP server is automatically managed by Claude Code session
+- To reconnect or restart: Use `/mcp` command in Claude Code
+- The server persists across Claude conversations within the same session
+
 ### Running Tests
 ```bash
 uv run pytest                    # Run all tests
@@ -412,6 +478,7 @@ uv run pytest --cov=autoware_mcp  # Run tests with coverage
 ✅ **Process Cleanup** - No orphaned processes after MCP crashes
 ✅ **Launch Generation** - AI can generate and test launch files iteratively
 ✅ **Session Recovery** - Sessions persist across MCP reconnections
+✅ **Perception Media Bridge** - AI agents can now access camera images, LiDAR visualizations, and object detections
 
 ## Future Improvements
 1. **Add Localization Validation** - Wait for and verify successful localization before allowing route setting
@@ -430,6 +497,13 @@ uv run pytest --cov=autoware_mcp  # Run tests with coverage
 - `get_vehicle_state` - Get vehicle info
 - `call_ros2_service` - Direct service calls
 - `publish_to_topic` - Publish to any topic
+
+### Perception Tools (NEW)
+- `capture_camera_view` - Capture camera images
+- `visualize_lidar_scene` - Visualize LiDAR data
+- `get_perception_snapshot` - Get perception state
+- `analyze_driving_scene` - Analyze complete scene
+- `get_detected_objects` - Get detected objects
 
 ### Launch Management Tools (NEW)
 - `start_launch` - Start ROS2 launch files
@@ -473,10 +547,14 @@ ros2 service call /api/routing/clear_route  # Clear route
 
 ---
 *Last Updated: 2025-08-28*
-*Status: PHASE 4 COMPLETE - Launch session management fully implemented*
+*Status: PHASE 5 COMPLETE - Perception media bridge implemented*
 
 ### Recent Updates
-- **2025-08-28**: Important updates added:
+- **2025-08-28**: Major updates completed:
+  - Phase 5 Perception Media Bridge implemented
+  - 5 new MCP tools for perception data access
+  - AI agents can now capture camera images and LiDAR visualizations
+  - Scene analysis tools for AI-driven decision making
   - Localization initialization troubleshooting 
   - MCP launch tools for planning simulation
   - Critical DISPLAY environment variable requirement
