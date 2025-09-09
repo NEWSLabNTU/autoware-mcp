@@ -1,52 +1,22 @@
 # Summary
 
-[Introduction](./introduction.md)
+[Introduction](README.md)
 
-# Getting Started
+# Overview
 
-- [Installation](./getting-started/installation.md)
-- [Quick Start](./getting-started/quickstart.md)
-- [Claude Desktop Setup](./getting-started/claude-desktop-setup.md)
+- [Source Code Structure](overview/source-structure.md)
+- [Server Architecture](overview/architecture.md)
 
-# User Guide
+# API Reference
 
-- [Core Concepts](./user-guide/core-concepts.md)
-- [Basic Usage](./user-guide/basic-usage.md)
-- [Autonomous Driving Examples](./user-guide/autonomous-driving.md)
-- [Launch Management](./user-guide/launch-management.md)
-- [Vehicle Control](./user-guide/vehicle-control.md)
+- [MCP Tools Specification](api/tools-spec.md)
 
-# Architecture
+# Design Topics
 
-- [System Overview](./architecture/overview.md)
-- [MCP Integration](./architecture/mcp-integration.md)
-- [Components](./architecture/components.md)
-- [Safety & Monitoring](./architecture/safety-monitoring.md)
+- [Session Management](design/session-management.md)
+- [Perception Bridge](design/perception-bridge.md)
 
-# Developer Guide
+# Examples
 
-- [Development Setup](./developer/setup.md)
-- [API Reference](./developer/api-reference.md)
-  - [MCP Tools](./developer/api/mcp-tools.md)
-  - [Launch Tools](./developer/api/launch-tools.md)
-  - [AD API](./developer/api/ad-api.md)
-- [Testing](./developer/testing.md)
-- [Contributing](./developer/contributing.md)
-
-# Advanced Topics
-
-- [Localization](./advanced/localization.md)
-- [Route Planning](./advanced/route-planning.md)
-- [Custom Launch Files](./advanced/custom-launch.md)
-- [Performance Tuning](./advanced/performance.md)
-
-# Reference
-
-- [Quick Reference](./reference/quick-reference.md)
-- [Troubleshooting](./reference/troubleshooting.md)
-- [Roadmap](./reference/roadmap.md)
-- [Changelog](./reference/changelog.md)
-
----
-
-[Appendix: Implementation Details](./appendix/implementation.md)
+- [Quick Start](examples/quickstart.md)
+- [Common Scenarios](examples/scenarios.md)
